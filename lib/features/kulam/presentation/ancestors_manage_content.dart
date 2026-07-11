@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kulatheivam/core/network/api_client.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
 import 'dart:io';
 
 class AncestorsManageContent extends StatefulWidget {
@@ -166,7 +167,11 @@ class _AncestorsManageContentState extends State<AncestorsManageContent> {
   Future<void> _deleteAncestor() async {
     if (_selectedAncestorId == null) return;
     
-    final confirmed = await CustomDeleteDialog.showConfirmation(context);
+    final confirmed = await CustomDeleteDialog.showConfirmation(
+      context,
+      title: 'நிச்சயமாக நீக்க\nவேண்டுமா?',
+      message: 'இந்த முன்னோரின் விபரம் நிரந்தரமாக நீக்கப்படும்! (Delete this ancestor?)',
+    );
 
     if (confirmed == true) {
       setState(() => _isLoading = true);
@@ -174,7 +179,11 @@ class _AncestorsManageContentState extends State<AncestorsManageContent> {
         final response = await _apiClient.delete('/ancestor/delete/$_selectedAncestorId');
         final dataObj = response['data'] ?? {};
         if (dataObj['code'] == 200) {
-          CustomDeleteDialog.showSuccess(context, title: 'வெற்றி', message: 'விவரங்கள் வெற்றிகரமாக சேமிக்கப்பட்டது');
+          CustomDeleteDialog.showSuccess(
+            context,
+            title: 'வெற்றி',
+            message: 'முன்னோரின் விவரம் நீக்கப்பட்டது (Ancestor deleted successfully)',
+          );
           _resetForm();
           _fetchAncestors();
         }
@@ -236,30 +245,39 @@ class _AncestorsManageContentState extends State<AncestorsManageContent> {
                         style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: _selectedAncestorId,
-                            hint: const Text('-- புதிய முன்னோர் சேர்க்கவும் (Add New Ancestor) --'),
-                            items: [
-                              const DropdownMenuItem<String>(
-                                value: null,
-                                child: Text('-- புதிய முன்னோர் சேர்க்கவும் (Add New Ancestor) --'),
-                              ),
-                              ..._ancestors.map((e) => DropdownMenuItem<String>(
-                                value: e['id'].toString(),
-                                child: Text(e['name']?.toString() ?? 'Unknown'),
-                              )),
-                            ],
-                            onChanged: _onAncestorSelected,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SearchableDropdown(
+                              items: _ancestors,
+                              hint: '-- புதிய முன்னோர் சேர்க்கவும் (Add New Ancestor) --',
+                              displayBuilder: (e) {
+                                final n = e['name']?.toString() ?? 'Unknown';
+                                final g = e['gender'] == 'male' ? 'ஆண்' : 'பெண்';
+                                final gen = e['generation'] != null ? 'Gen ${e['generation']}' : '';
+                                return gen.isNotEmpty ? '$n ($g • $gen)' : '$n ($g)';
+                              },
+                              valueKey: 'id',
+                              selectedValue: _selectedAncestorId,
+                              onChanged: _onAncestorSelected,
+                              searchTitle: 'முன்னோர்கள் (Select Ancestor)',
+                              resetOptionLabel: '-- புதிய முன்னோர் சேர்க்கவும் (Add New Ancestor) --',
+                            ),
                           ),
-                        ),
+                          if (_selectedAncestorId != null) ...[
+                            const SizedBox(width: 12),
+                            OutlinedButton.icon(
+                              onPressed: _deleteAncestor,
+                              icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                              label: const Text('நீக்கு (Delete)', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.red),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -369,17 +387,6 @@ class _AncestorsManageContentState extends State<AncestorsManageContent> {
                           spacing: 16,
                           runSpacing: 16,
                           children: [
-                            if (_selectedAncestorId != null)
-                              OutlinedButton.icon(
-                                onPressed: _deleteAncestor,
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                label: const Text('நீக்க (Delete)', style: TextStyle(color: Colors.red)),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                  side: const BorderSide(color: Colors.red),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
                             OutlinedButton.icon(
                               onPressed: _resetForm,
                               icon: Icon(Icons.refresh, color: Colors.grey.shade600, size: 18),
@@ -457,38 +464,16 @@ class _AncestorsManageContentState extends State<AncestorsManageContent> {
       children: [
         const Text('தலைமுறை (Select Generation)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _selectedGeneration,
-              hint: const Text('-- தேர்ந்தெடுக்கவும் --'),
-              icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
-              items: _generations.map((e) => DropdownMenuItem(
-                value: e['id'], 
-                child: Row(
-                  children: [
-                    Icon(Icons.layers_outlined, color: Colors.grey.shade400, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        e['name']!,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              )).toList(),
-              onChanged: (val) {
-                if (val != null) setState(() => _selectedGeneration = val);
-              },
-            ),
-          ),
+        SearchableDropdown(
+          items: _generations,
+          hint: '-- தேர்ந்தெடுக்கவும் --',
+          displayBuilder: (e) => e['name']!,
+          valueKey: 'id',
+          selectedValue: _selectedGeneration,
+          onChanged: (val) {
+            if (val != null) setState(() => _selectedGeneration = val);
+          },
+          searchTitle: 'தலைமுறை (Select Generation)',
         ),
       ],
     );
@@ -500,38 +485,20 @@ class _AncestorsManageContentState extends State<AncestorsManageContent> {
       children: [
         const Text('பாலினம் (Gender)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _selectedGender,
-              icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade600),
-              items: [
-                DropdownMenuItem(value: 'male', child: Row(
-                  children: [
-                    Icon(Icons.person_outline, color: Colors.grey.shade400, size: 20),
-                    const SizedBox(width: 8),
-                    const Text('ஆண் (Male)'),
-                  ],
-                )),
-                DropdownMenuItem(value: 'female', child: Row(
-                  children: [
-                    Icon(Icons.person_3_outlined, color: Colors.grey.shade400, size: 20),
-                    const SizedBox(width: 8),
-                    const Text('பெண் (Female)'),
-                  ],
-                )),
-              ],
-              onChanged: (val) {
-                if (val != null) setState(() => _selectedGender = val);
-              },
-            ),
-          ),
+        SearchableDropdown(
+          items: const [
+            {'id': 'male', 'name': 'ஆண் (Male)'},
+            {'id': 'female', 'name': 'பெண் (Female)'},
+          ],
+          hint: '-- தேர்ந்தெடுக்கவும் --',
+          displayBuilder: (e) => e['name']!,
+          valueKey: 'id',
+          selectedValue: _selectedGender,
+          onChanged: (val) {
+            if (val != null) setState(() => _selectedGender = val);
+          },
+          searchTitle: 'பாலினம் (Gender)',
+          showSearch: false,
         ),
       ],
     );

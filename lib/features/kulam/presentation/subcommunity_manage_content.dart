@@ -1,4 +1,5 @@
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -160,6 +161,41 @@ class _SubCommunityManageContentState extends State<SubCommunityManageContent> {
     }
   }
 
+  Future<void> _deleteSubCommunity() async {
+    if (_selectedTopDropdown == _defaultTopDropdown) return;
+    final selectedId = int.parse(_selectedTopDropdown);
+    
+    final confirm = await CustomDeleteDialog.showConfirmation(
+      context,
+      title: 'நிச்சயமாக நீக்க\nவேண்டுமா?',
+      message: 'இந்த உட்பிரிவின் விபரம் நிரந்தரமாக நீக்கப்படும்! (Delete this sub-community?)',
+    );
+    
+    if (confirm == true) {
+      setState(() => _isSaving = true);
+      try {
+        await _apiRepository.deleteSubCommunity(selectedId);
+        if (mounted) {
+          CustomDeleteDialog.showSuccess(
+            context,
+            title: 'வெற்றி',
+            message: 'உட்பிரிவின் விவரம் நீக்கப்பட்டது (Sub-community deleted successfully)',
+          );
+        }
+        _clearForm();
+        await _fetchData();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting sub-community: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
   Future<void> _pickImage(void Function(XFile?) onPicked) async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -220,53 +256,78 @@ class _SubCommunityManageContentState extends State<SubCommunityManageContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top Dropdown
-                _buildDropdownField(
-                  'ஏற்கனவே உள்ள உட்பிரிவைத் தேர்ந்தெடுத்து திருத்த அல்லது நீக்க (Select to Edit/Delete)',
-                  _selectedTopDropdown,
-                  [
-                    DropdownMenuItem<String>(
-                      value: _defaultTopDropdown,
-                      child: Text(_defaultTopDropdown, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ஏற்கனவே உள்ள உட்பிரிவைத் தேர்ந்தெடுத்து திருத்த அல்லது நீக்க (Select to Edit/Delete)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF524EE1),
+                      ),
                     ),
-                    ..._subCommunities.map((c) {
-                      final val = c['id'].toString();
-                      final parentComm = _communities.firstWhere(
-                        (p) => p['id'] == c['community_id'],
-                        orElse: () => {'community_name_tamil': ''}
-                      );
-                      final parentName = parentComm['community_name_tamil'] ?? '';
-                      final display = '${c['sub_community_name_tamil']} (${c['sub_community_name_english']}) - $parentName';
-                      return DropdownMenuItem<String>(
-                        value: val,
-                        child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                      );
-                    }).toList(),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SearchableDropdown(
+                            items: _subCommunities,
+                            hint: _defaultTopDropdown,
+                            displayBuilder: (c) {
+                              final parentComm = _communities.firstWhere(
+                                (p) => p['id'] == c['community_id'],
+                                orElse: () => {'community_name_tamil': ''}
+                              );
+                              final parentName = parentComm['community_name_tamil'] ?? '';
+                              return '${c['sub_community_name_tamil']} (${c['sub_community_name_english']}) - $parentName';
+                            },
+                            valueKey: 'id',
+                            selectedValue: _selectedTopDropdown == _defaultTopDropdown ? null : _selectedTopDropdown,
+                            onChanged: (val) {
+                              final actualVal = val ?? _defaultTopDropdown;
+                              setState(() {
+                                _selectedTopDropdown = actualVal;
+                                if (actualVal == _defaultTopDropdown) {
+                                  _clearForm();
+                                } else {
+                                  final selectedId = int.parse(actualVal);
+                                  final subComm = _subCommunities.firstWhere((c) => c['id'] == selectedId);
+                                  
+                                  _selectedParentCommunity = subComm['community_id']?.toString() ?? _defaultParentCommunity;
+                                  _nameTamilController.text = subComm['sub_community_name_tamil'] ?? '';
+                                  _nameEnglishController.text = subComm['sub_community_name_english'] ?? '';
+                                  _titleController.text = subComm['title'] ?? '';
+                                  _infoController.text = subComm['info'] ?? '';
+                                  _descriptionController.text = subComm['description'] ?? '';
+                                  _historyController.text = subComm['history'] ?? '';
+                                  
+                                  _imageFile = null;
+                                  _logoFile = null;
+                                  _iconFile = null;
+                                }
+                              });
+                            },
+                            searchTitle: 'உட்பிரிவு (Select Sub-Community)',
+                            resetOptionLabel: 'புதிய உட்பிரிவு சேர்க்கவும் (Add New Sub-Community)',
+                          ),
+                        ),
+                        if (_selectedTopDropdown != _defaultTopDropdown) ...[
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: _deleteSubCommunity,
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                            label: const Text('நீக்கு (Delete)', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
-                  (val) {
-                    if (val != null) {
-                      setState(() {
-                        _selectedTopDropdown = val;
-                        if (val == _defaultTopDropdown) {
-                          _clearForm();
-                        } else {
-                          final selectedId = int.parse(val);
-                          final subComm = _subCommunities.firstWhere((c) => c['id'] == selectedId);
-                          
-                          _selectedParentCommunity = subComm['community_id']?.toString() ?? _defaultParentCommunity;
-                          _nameTamilController.text = subComm['sub_community_name_tamil'] ?? '';
-                          _nameEnglishController.text = subComm['sub_community_name_english'] ?? '';
-                          _titleController.text = subComm['title'] ?? '';
-                          _infoController.text = subComm['info'] ?? '';
-                          _descriptionController.text = subComm['description'] ?? '';
-                          _historyController.text = subComm['history'] ?? '';
-                          
-                          _imageFile = null;
-                          _logoFile = null;
-                          _iconFile = null;
-                        }
-                      });
-                    }
-                  },
                 ),
                 const SizedBox(height: 32),
 
@@ -294,27 +355,39 @@ class _SubCommunityManageContentState extends State<SubCommunityManageContent> {
                 const SizedBox(height: 24),
 
                 // Parent Community Dropdown
-                _buildDropdownField(
-                  'சமூகம் (Select Community) *',
-                  _selectedParentCommunity,
-                  [
-                    DropdownMenuItem<String>(
-                      value: _defaultParentCommunity,
-                      child: Text(_defaultParentCommunity, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: const TextSpan(
+                        text: 'சமூகம் (Select Community)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E1B4B),
+                        ),
+                        children: [
+                          TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
                     ),
-                    ..._communities.map((c) {
-                      final val = c['id'].toString();
-                      final display = '${c['community_name_tamil']} (${c['community_name_english']})';
-                      return DropdownMenuItem<String>(
-                        value: val,
-                        child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                      );
-                    }).toList(),
+                    const SizedBox(height: 8),
+                    SearchableDropdown(
+                      items: _communities,
+                      hint: _defaultParentCommunity,
+                      displayBuilder: (c) => '${c['community_name_tamil']} (${c['community_name_english']})',
+                      valueKey: 'id',
+                      selectedValue: _selectedParentCommunity == _defaultParentCommunity ? null : _selectedParentCommunity,
+                      onChanged: (val) {
+                        final actualVal = val ?? _defaultParentCommunity;
+                        setState(() => _selectedParentCommunity = actualVal);
+                      },
+                      searchTitle: 'சமூகம் (Select Community)',
+                    ),
                   ],
-                  (val) {
-                    if (val != null) setState(() => _selectedParentCommunity = val);
-                  },
-                  isRedAsterisk: true,
                 ),
                 const SizedBox(height: 24),
 

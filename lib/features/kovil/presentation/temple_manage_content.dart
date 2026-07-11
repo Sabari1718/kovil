@@ -445,29 +445,32 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
 
                     return Column(
                       children: filtered.map((c) {
-                        return CheckboxListTile(
-                          title: Text(
-                            c.categoryName,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black87,
+                        return Material(
+                          color: Colors.transparent,
+                          child: CheckboxListTile(
+                            title: Text(
+                              c.categoryName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
                             ),
+                            value: _selectedPrimaryCategoryIds.contains(c.id),
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedPrimaryCategoryIds.add(c.id);
+                                } else {
+                                  _selectedPrimaryCategoryIds.remove(c.id);
+                                }
+                                // Clear sub-categories when primary changes
+                                _selectedSubCategoryIds.clear();
+                              });
+                            },
                           ),
-                          value: _selectedPrimaryCategoryIds.contains(c.id),
-                          dense: true,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          onChanged: (val) {
-                            setState(() {
-                              if (val == true) {
-                                _selectedPrimaryCategoryIds.add(c.id);
-                              } else {
-                                _selectedPrimaryCategoryIds.remove(c.id);
-                              }
-                              // Clear sub-categories when primary changes
-                              _selectedSubCategoryIds.clear();
-                            });
-                          },
                         );
                       }).toList(),
                     );
@@ -589,27 +592,30 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
 
                     return Column(
                       children: filtered.map((c) {
-                        return CheckboxListTile(
-                          title: Text(
-                            c.categoryName,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black87,
+                        return Material(
+                          color: Colors.transparent,
+                          child: CheckboxListTile(
+                            title: Text(
+                              c.categoryName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black87,
+                              ),
                             ),
+                            value: _selectedSubCategoryIds.contains(c.id),
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedSubCategoryIds.add(c.id);
+                                } else {
+                                  _selectedSubCategoryIds.remove(c.id);
+                                }
+                              });
+                            },
                           ),
-                          value: _selectedSubCategoryIds.contains(c.id),
-                          dense: true,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          onChanged: (val) {
-                            setState(() {
-                              if (val == true) {
-                                _selectedSubCategoryIds.add(c.id);
-                              } else {
-                                _selectedSubCategoryIds.remove(c.id);
-                              }
-                            });
-                          },
                         );
                       }).toList(),
                     );
@@ -975,7 +981,7 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
               .read(kovilApiRepositoryProvider)
               .addTemple(data);
           if (templeId != null && mounted) {
-            CustomDeleteDialog.showSuccess(context, title: 'வெற்றி', message: 'விவரங்கள் வெற்றிகரமாக சேமிக்கப்பட்டது');
+            await CustomDeleteDialog.showSuccess(context, title: 'வெற்றி', message: 'விவரங்கள் வெற்றிகரமாக சேமிக்கப்பட்டது');
 
             final String mulavar = _mulavarNameController.text;
             final String templeName = _templeNameController.text;

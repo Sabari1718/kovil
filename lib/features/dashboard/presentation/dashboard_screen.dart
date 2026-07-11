@@ -243,6 +243,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return const KattaliTharalContent();
       case 'திருவிழாக்கள்':
         return const FestivalsTabsContent();
+      case 'பிரார்த்தனை':
+        return const KuraiNivarthiContent();
       case 'விசேஷங்கள்':
         return const ViseshamContent();
       case 'நிர்வாகம்':

@@ -110,6 +110,7 @@ class _TempleListContentState extends ConsumerState<TempleListContent> {
                       ? templeData['id']
                       : int.tryParse(templeData['id'].toString()),
                   initialData: templeData,
+                  isDialog: true,
                 ),
               ),
             ),

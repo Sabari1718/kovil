@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kulatheivam/core/network/api_client.dart';
 import 'package:kulatheivam/features/kulam/data/kulam_api_repository.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
 
 class KulaDeivamWorshipContent extends StatefulWidget {
   final Function(String screenName)? onScreenSelected;
@@ -24,6 +25,8 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
   String? selectedGeneration;
   
   final TextEditingController _currentVagaiyaraController = TextEditingController();
+  final TextEditingController _nativePlaceController = TextEditingController();
+  final TextEditingController _currentPlaceController = TextEditingController();
 
   int _currentStep = 1;
   String? maritalStatus;
@@ -43,9 +46,6 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
   void initState() {
     super.initState();
     _fetchInitialData();
-    _currentVagaiyaraController.addListener(() {
-      setState(() {});
-    });
   }
 
   Future<void> _fetchInitialData() async {
@@ -119,7 +119,7 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
           const SizedBox(height: 32),
           
           // Registered Submissions Database
-          _buildRegisteredSubmissions(),
+          RepaintBoundary(child: _buildRegisteredSubmissions()),
         ],
       ),
     );
@@ -825,71 +825,111 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                         });
                       },
                     ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      label: 'சொந்த ஊர் (Native Place)',
+                      isRequired: true,
+                      hint: 'சொந்த ஊரை உள்ளிடவும்',
+                      controller: _nativePlaceController,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      label: 'தற்போதைய ஊர் (Current Place)',
+                      isRequired: true,
+                      hint: 'தற்போதைய ஊரை உள்ளிடவும்',
+                      controller: _currentPlaceController,
+                    ),
                   ],
                 );
               }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              return Column(
                 children: [
-                  Expanded(
-                    child: _buildDropdownField(
-                      label: 'முந்தைய வகையரா (Muthaiya Vagaiyara)',
-                      isRequired: true,
-                      items: vagaiyaras.where((v) => v['community_id'].toString() == selectedCommunity).toList(),
-                      hint: '-- வகையறா தேர்ந்தெடுக்கவும் --',
-                      displayBuilder: (item) {
-                        final tamil = item['vagaiyara_name_tamil'] ?? '';
-                        final english = item['vagaiyara_name_english'] ?? '';
-                        if (english.toString().isNotEmpty) {
-                          return '$tamil ($english)';
-                        }
-                        return tamil.toString();
-                      },
-                      valueKey: 'id',
-                      selectedValue: selectedVagaiyara,
-                      onChanged: (val) {
-                        setState(() {
-                          selectedVagaiyara = val;
-                        });
-                      },
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildDropdownField(
+                          label: 'முந்தைய வகையரா (Muthaiya Vagaiyara)',
+                          isRequired: true,
+                          items: vagaiyaras.where((v) => v['community_id'].toString() == selectedCommunity).toList(),
+                          hint: '-- வகையறா தேர்ந்தெடுக்கவும் --',
+                          displayBuilder: (item) {
+                            final tamil = item['vagaiyara_name_tamil'] ?? '';
+                            final english = item['vagaiyara_name_english'] ?? '';
+                            if (english.toString().isNotEmpty) {
+                              return '$tamil ($english)';
+                            }
+                            return tamil.toString();
+                          },
+                          valueKey: 'id',
+                          selectedValue: selectedVagaiyara,
+                          onChanged: (val) {
+                            setState(() {
+                              selectedVagaiyara = val;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          label: 'தற்போதைய வகையறா (Tharpothaiya Vagaiyara)',
+                          isRequired: true,
+                          hint: 'தற்போதைய வகையராவை உள்ளிடவும்',
+                          controller: _currentVagaiyaraController,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildDropdownField(
+                          label: 'எந்த தலைமுறை (Select Generation)',
+                          isRequired: true,
+                          items: [
+                            {'id': '1', 'title': '1-ஆம் தலைமுறை (1st Gen)'},
+                            {'id': '2', 'title': '2-ஆம் தலைமுறை (2nd Gen)'},
+                            {'id': '3', 'title': '3-ஆம் தலைமுறை (3rd Gen)'},
+                            {'id': '4', 'title': '4-ஆம் தலைமுறை (4th Gen)'},
+                            {'id': '5', 'title': '5-ஆம் தலைமுறை (5th Gen)'},
+                            {'id': '6', 'title': '6-ஆம் தலைமுறை (6th Gen)'},
+                            {'id': '7', 'title': '7-ஆம் தலைமுறை (7th Gen)'},
+                            {'id': '8', 'title': '8-ஆம் தலைமுறை (8th Gen)'},
+                            {'id': '9', 'title': '9-ஆம் தலைமுறை (9th Gen)'},
+                            {'id': '10', 'title': '10-ஆம் தலைமுறை + (10th Gen+)'},
+                          ],
+                          hint: '-- தலைமுறை தேர்ந்தெடுக்கவும் --',
+                          displayBuilder: (item) => item['title']?.toString() ?? '',
+                          valueKey: 'id',
+                          selectedValue: selectedGeneration,
+                          onChanged: (val) {
+                            setState(() {
+                              selectedGeneration = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildTextField(
-                      label: 'தற்போதைய வகையறா (Tharpothaiya Vagaiyara)',
-                      isRequired: true,
-                      hint: 'தற்போதைய வகையராவை உள்ளிடவும்',
-                      controller: _currentVagaiyaraController,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildDropdownField(
-                      label: 'எந்த தலைமுறை (Select Generation)',
-                      isRequired: true,
-                      items: [
-                        {'id': '1', 'title': '1-ஆம் தலைமுறை (1st Gen)'},
-                        {'id': '2', 'title': '2-ஆம் தலைமுறை (2nd Gen)'},
-                        {'id': '3', 'title': '3-ஆம் தலைமுறை (3rd Gen)'},
-                        {'id': '4', 'title': '4-ஆம் தலைமுறை (4th Gen)'},
-                        {'id': '5', 'title': '5-ஆம் தலைமுறை (5th Gen)'},
-                        {'id': '6', 'title': '6-ஆம் தலைமுறை (6th Gen)'},
-                        {'id': '7', 'title': '7-ஆம் தலைமுறை (7th Gen)'},
-                        {'id': '8', 'title': '8-ஆம் தலைமுறை (8th Gen)'},
-                        {'id': '9', 'title': '9-ஆம் தலைமுறை (9th Gen)'},
-                        {'id': '10', 'title': '10-ஆம் தலைமுறை + (10th Gen+)'},
-                      ],
-                      hint: '-- தலைமுறை தேர்ந்தெடுக்கவும் --',
-                      displayBuilder: (item) => item['title']?.toString() ?? '',
-                      valueKey: 'id',
-                      selectedValue: selectedGeneration,
-                      onChanged: (val) {
-                        setState(() {
-                          selectedGeneration = val;
-                        });
-                      },
-                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          label: 'சொந்த ஊர் (Native Place)',
+                          isRequired: true,
+                          hint: 'சொந்த ஊரை உள்ளிடவும்',
+                          controller: _nativePlaceController,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTextField(
+                          label: 'தற்போதைய ஊர் (Current Place)',
+                          isRequired: true,
+                          hint: 'தற்போதைய ஊரை உள்ளிடவும்',
+                          controller: _currentPlaceController,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               );
@@ -966,52 +1006,67 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
 
           const SizedBox(height: 32),
 
-          // Actions
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              OutlinedButton(
-                onPressed: () {
-                  setState(() {
-                    _currentStep = 1;
-                  });
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.grey.shade700,
-                  side: BorderSide(color: Colors.grey.shade300),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              // Actions
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _currentStep = 1;
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey.shade700,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('முந்தையது (Back)'),
                   ),
-                ),
-                child: const Text('முந்தையது (Back)'),
-              ),
-              ElevatedButton(
-                onPressed: (selectedVagaiyara != null && _currentVagaiyaraController.text.trim().isNotEmpty && selectedGeneration != null)
-                    ? () {
-                        setState(() {
-                          _currentStep = 3;
-                        });
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF524EE1),
-                  disabledBackgroundColor: Colors.grey.shade300,
-                  disabledForegroundColor: Colors.grey.shade600,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  ListenableBuilder(
+                    listenable: Listenable.merge([
+                      _currentVagaiyaraController,
+                      _nativePlaceController,
+                      _currentPlaceController,
+                    ]),
+                    builder: (context, child) {
+                      final isComplete = selectedVagaiyara != null &&
+                          _currentVagaiyaraController.text.trim().isNotEmpty &&
+                          selectedGeneration != null &&
+                          _nativePlaceController.text.trim().isNotEmpty &&
+                          _currentPlaceController.text.trim().isNotEmpty;
+
+                      return ElevatedButton(
+                        onPressed: isComplete
+                            ? () {
+                                setState(() {
+                                  _currentStep = 3;
+                                });
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF524EE1),
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          disabledForegroundColor: Colors.grey.shade600,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'அடுத்தது (Next) >',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
                   ),
-                ),
-                child: const Text(
-                  'அடுத்தது (Next) >',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                ],
               ),
-            ],
-          ),
         ],
       ),
     );
@@ -1298,6 +1353,8 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
         'vagaiyara_id': int.tryParse(selectedVagaiyara ?? ''),
         'tharpothaiya_vagaiyara': _currentVagaiyaraController.text.trim(),
         'generation_no': int.tryParse(selectedGeneration ?? ''),
+        'native_place': _nativePlaceController.text.trim(),
+        'current_place': _currentPlaceController.text.trim(),
         'marital_status': maritalStatus?.toLowerCase(),
         'spouse_name': wifeName.trim().isNotEmpty ? wifeName.trim() : null,
         'spouse_kula_deivam_id': wifeDeity.trim().isNotEmpty ? wifeDeity.trim() : null,
@@ -1324,6 +1381,8 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
           selectedVagaiyara = null;
           selectedGeneration = null;
           _currentVagaiyaraController.clear();
+          _nativePlaceController.clear();
+          _currentPlaceController.clear();
           maritalStatus = null;
           wifeName = '';
           wifeDeity = '';
@@ -1606,50 +1665,14 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
           ],
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: selectedValue,
-              hint: Text(
-                hint,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.grey.shade600,
-              ),
-              items: (() {
-                final seen = <String>{};
-                return items.where((item) {
-                  final val = item[valueKey]?.toString() ?? '';
-                  if (seen.contains(val)) return false;
-                  seen.add(val);
-                  return true;
-                }).map((dynamic item) {
-                  final displayValue = displayBuilder(item);
-                  final value = item[valueKey]?.toString() ?? '';
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(
-                      displayValue,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  );
-                }).toList();
-              })(),
-              onChanged: onChanged,
-            ),
-          ),
+        SearchableDropdown(
+          items: items,
+          hint: hint,
+          displayBuilder: displayBuilder,
+          valueKey: valueKey,
+          selectedValue: selectedValue,
+          onChanged: onChanged,
+          searchTitle: label.replaceAll(' *', ''),
         ),
       ],
     );
@@ -1757,6 +1780,17 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
   }
 
   Widget _buildRegisteredSubmissions() {
+    if (communitySelections.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Optimization: Create maps for O(1) lookup speed
+    final communityMap = {for (var item in communities) item['id'].toString(): item};
+    final subCommunityMap = {for (var item in subCommunities) item['id'].toString(): item};
+    final kulaMap = {for (var item in kulas) item['id'].toString(): item};
+    final deivamMap = {for (var item in kulaDeivams) item['id'].toString(): item};
+    final vagaiyaraMap = {for (var item in vagaiyaras) item['id'].toString(): item};
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -1777,10 +1811,10 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
             children: [
               const Icon(Icons.check_circle, color: Colors.blue, size: 24),
               const SizedBox(width: 8),
-              Expanded(
+              const Expanded(
                 child: Text(
                   'பதிவு செய்யப்பட்ட பட்டியல்கள் (Registered Submissions - Database)',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1E1B4B),
@@ -1828,7 +1862,7 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                 DataColumn(label: Text('சமூகம்\nமற்றும்\nஉட்பிரிவு', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('குலம்\n(KULAM)', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('குல தெய்வம்', style: TextStyle(fontWeight: FontWeight.bold))),
-                DataColumn(label: Text('வகையரா', style: TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('வகையறா', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('சொந்த ஊர் /\nஇப்போதைய\nஊர்', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('தலைமுறை', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('திருமண நிலை &\nமனைவி விவரம்', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -1839,37 +1873,38 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                 final submission = entry.value;
 
                 final communityId = submission['community_id'].toString();
-                final subCommunityId = submission['sub_community_id'].toString();
+                final subCommunityId = submission['sub_community_id']?.toString();
                 final kulaId = submission['kula_id'].toString();
                 final deivamId = submission['kula_deivam_id'].toString();
                 final vagaiyaraId = submission['vagaiyara_id']?.toString();
 
-                final c = communities.firstWhere((e) => e['id'].toString() == communityId, orElse: () => null);
-                final sc = subCommunities.firstWhere((e) => e['id'].toString() == subCommunityId, orElse: () => null);
-                final k = kulas.firstWhere((e) => e['id'].toString() == kulaId, orElse: () => null);
-                final d = kulaDeivams.firstWhere((e) => e['id'].toString() == deivamId, orElse: () => null);
-                final v = vagaiyaras.firstWhere((e) => e['id'].toString() == vagaiyaraId, orElse: () => null);
+                final c = communityMap[communityId];
+                final sc = subCommunityMap[subCommunityId];
+                final k = kulaMap[kulaId];
+                final d = deivamMap[deivamId];
+                final v = vagaiyaraMap[vagaiyaraId];
 
-                final cTamil = c != null ? c['community_name_tamil'] : '';
-                final cEng = c != null ? c['community_name_english'] : '';
-                final scTamil = sc != null ? sc['sub_community_name_tamil'] : '';
-                final scEng = sc != null ? sc['sub_community_name_english'] : '';
+                final cTamil = c?['community_name_tamil'] ?? '';
+                final cEng = c?['community_name_english'] ?? '';
+                final scTamil = sc?['sub_community_name_tamil'] ?? '';
+                final scEng = sc?['sub_community_name_english'] ?? '';
 
-                final kTamil = k != null ? k['kula_name_tamil'] : '';
-                final kEng = k != null ? k['kula_name_english'] : '';
+                final kTamil = k?['kula_name_tamil'] ?? '';
+                final kEng = k?['kula_name_english'] ?? '';
 
-                final dTamil = d != null ? d['deity_name_tamil'] : '';
-                final dEng = d != null ? d['deity_name_english'] : '';
-                final dImage = d != null ? d['image_path'] : null;
+                final dTamil = d?['deity_name_tamil'] ?? '';
+                final dEng = d?['deity_name_english'] ?? '';
+                final dImage = d?['image_path'];
 
-                final vTamil = v != null ? v['vagaiyara_name_tamil'] : submission['tharpothaiya_vagaiyara'] ?? 'Unknown';
+                final vTamil = v?['vagaiyara_name_tamil'] ?? submission['tharpothaiya_vagaiyara'] ?? 'Unknown';
 
                 final generation = submission['generation_no'] ?? '';
                 final tharpothaiya = submission['tharpothaiya_vagaiyara'] ?? 'Nill';
                 
-                // Assuming place mapping will be handled later, using Nill for now as per image.
-                final nativePlace = 'Nill'; 
-                final currentPlace = 'Nill';
+                final nativePlace = submission['native_place'] ?? 'Nill'; 
+                final currentPlace = submission['current_place'] ?? 'Nill';
+                final marital = submission['marital_status'] ?? 'unmarried';
+                final spouse = submission['spouse_name'];
 
                 return DataRow(
                   cells: [
@@ -1878,8 +1913,9 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(cTamil ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                        Text('உட்பிரிவு: $scTamil ($scEng)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text(cTamil, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        if (scTamil.isNotEmpty)
+                          Text('உட்பிரிவு: $scTamil ($scEng)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                         Text('$cTamil ($cEng)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                       ],
                     )),
@@ -1887,7 +1923,7 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(kTamil ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(kTamil, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         Text('குலம் ($kEng Kulam)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                       ],
                     )),
@@ -1901,7 +1937,7 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (dImage != null)
+                            if (dImage != null && dImage.toString().isNotEmpty)
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(20),
                                 child: Image.network(
@@ -1910,12 +1946,12 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                                   errorBuilder: (c,e,s) => const Icon(Icons.person, size: 24),
                                 ),
                               ),
-                            if (dImage != null) const SizedBox(width: 8),
+                            const SizedBox(width: 8),
                             Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(dTamil ?? '', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                                Text(dTamil, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
                                 Text('($dEng)', style: const TextStyle(color: Colors.green, fontSize: 10)),
                               ],
                             ),
@@ -1927,7 +1963,7 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(vTamil ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        Text(vTamil, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                         Text('தற்போதைய: $tharpothaiya', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                       ],
                     )),
@@ -1951,8 +1987,12 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Unmarried', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                        const Text('(திருமணமாகாதவர்)', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text(marital == 'married' ? 'Married' : 'Unmarried', 
+                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        if (marital == 'married' && spouse != null)
+                          Text('Wife: $spouse', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text(marital == 'married' ? '(திருமணமானவர்)' : '(திருமணமாகாதவர்)', 
+                             style: const TextStyle(fontSize: 10, color: Colors.grey)),
                       ],
                     )),
                     DataCell(
@@ -1974,6 +2014,10 @@ class _KulaDeivamWorshipContentState extends State<KulaDeivamWorshipContent> {
   @override
   void dispose() {
     _currentVagaiyaraController.dispose();
+    _nativePlaceController.dispose();
+    _currentPlaceController.dispose();
     super.dispose();
   }
-}
+
+  }
+

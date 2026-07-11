@@ -227,7 +227,7 @@ class _SirappuPookaiContentState extends State<SirappuPookaiContent> {
           : _selectedDeity,
       'title': _titleController.text,
       'special_day_name': _viseshaNameController.text,
-      'date': _dateController.text,
+      'date': _dateController.text.trim().isEmpty ? null : _dateController.text,
       'time': _timeController.text,
       'day': _selectedDay == 'Select கிழமை (Day)' ? '' : _selectedDay,
       'departure_time': _purappaaduTimeController.text,
@@ -291,7 +291,7 @@ class _SirappuPookaiContentState extends State<SirappuPookaiContent> {
       _viseshaNameController.text =
           poojai['special_day_name']?.toString() ?? '';
 
-      if (poojai['date'] != null) {
+      if (poojai['date'] != null && poojai['date'].toString().isNotEmpty && poojai['date'].toString() != '-') {
         try {
           DateTime dt = DateTime.parse(poojai['date'].toString());
           _dateController.text =

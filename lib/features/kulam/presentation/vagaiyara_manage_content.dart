@@ -1,4 +1,5 @@
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -207,6 +208,41 @@ class _VagaiyaraManageContentState extends State<VagaiyaraManageContent> {
     }
   }
 
+  Future<void> _deleteVagaiyara() async {
+    if (_selectedTopDropdown == _defaultTopDropdown) return;
+    final selectedId = int.parse(_selectedTopDropdown);
+    
+    final confirm = await CustomDeleteDialog.showConfirmation(
+      context,
+      title: 'நிச்சயமாக நீக்க\nவேண்டுமா?',
+      message: 'இந்த வகையராவின் விபரம் நிரந்தரமாக நீக்கப்படும்! (Delete this vagaiyara?)',
+    );
+    
+    if (confirm == true) {
+      setState(() => _isSaving = true);
+      try {
+        await _apiRepository.deleteVagaiyara(selectedId);
+        if (mounted) {
+          CustomDeleteDialog.showSuccess(
+            context,
+            title: 'வெற்றி',
+            message: 'வகையராவின் விவரம் நீக்கப்பட்டது (Vagaiyara deleted successfully)',
+          );
+        }
+        _clearForm();
+        await _fetchData();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting vagaiyara: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
+    }
+  }
+
   Future<void> _pickImage(void Function(XFile?) onPicked) async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -271,53 +307,79 @@ class _VagaiyaraManageContentState extends State<VagaiyaraManageContent> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top Dropdown
-                _buildDropdownField(
-                  'ஏற்கனவே உள்ள வகைராவைத் தேர்ந்தெடுத்து திருத்த அல்லது நீக்க (Select to Edit/Delete)',
-                  _selectedTopDropdown,
-                  [
-                    DropdownMenuItem<String>(
-                      value: _defaultTopDropdown,
-                      child: Text(_defaultTopDropdown, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ஏற்கனவே உள்ள வகைராவைத் தேர்ந்தெடுத்து திருத்த அல்லது நீக்க (Select to Edit/Delete)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF524EE1),
+                      ),
                     ),
-                    ..._vagaiyaras.map((v) {
-                      final val = v['id'].toString();
-                      final t = v['our_gen_name_tamil'] ?? v['vagaiyara_name_tamil'] ?? '';
-                      final e = v['our_gen_name_english'] ?? v['vagaiyara_name_english'] ?? '';
-                      final display = e.toString().isNotEmpty ? '$t ($e)' : t;
-                      return DropdownMenuItem<String>(
-                        value: val,
-                        child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                      );
-                    }).toList(),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SearchableDropdown(
+                            items: _vagaiyaras,
+                            hint: _defaultTopDropdown,
+                            displayBuilder: (v) {
+                              final t = v['our_gen_name_tamil'] ?? v['vagaiyara_name_tamil'] ?? '';
+                              final e = v['our_gen_name_english'] ?? v['vagaiyara_name_english'] ?? '';
+                              return e.toString().isNotEmpty ? '$t ($e)' : t;
+                            },
+                            valueKey: 'id',
+                            selectedValue: _selectedTopDropdown == _defaultTopDropdown ? null : _selectedTopDropdown,
+                            onChanged: (val) {
+                              final actualVal = val ?? _defaultTopDropdown;
+                              setState(() {
+                                _selectedTopDropdown = actualVal;
+                                if (actualVal == _defaultTopDropdown) {
+                                  _clearForm();
+                                } else {
+                                  final v = _vagaiyaras.firstWhere((item) => item['id'].toString() == actualVal, orElse: () => null);
+                                  if (v != null) {
+                                    _selectedCommunity = v['community_id']?.toString() ?? _defaultCommunity;
+                                    _selectedSubCommunity = v['sub_community_id'] != null && v['sub_community_id'] != 0 ? v['sub_community_id'].toString() : _defaultSubCommunity;
+                                    _selectedKulam = v['kula_id']?.toString() ?? _defaultKulam;
+                                    _selectedKulaDeivam = v['kula_deivam_id']?.toString() ?? _defaultKulaDeivam;
+                                    
+                                    _ourGenNameTamilController.text = v['our_gen_name_tamil'] ?? v['vagaiyara_name_tamil'] ?? '';
+                                    _ourGenNameEnglishController.text = v['our_gen_name_english'] ?? v['vagaiyara_name_english'] ?? '';
+                                    _ancestorGenNameTamilController.text = v['ancestor_gen_name_tamil'] ?? '';
+                                    _ancestorGenNameEnglishController.text = v['ancestor_gen_name_english'] ?? '';
+                                    _nativePlaceController.text = v['native_place'] ?? '';
+                                    _currentPlaceController.text = v['current_place'] ?? '';
+                                    _titleController.text = v['title'] ?? '';
+                                    _infoController.text = v['info'] ?? '';
+                                    _descriptionController.text = v['description'] ?? '';
+                                    _historyController.text = v['history'] ?? '';
+                                  }
+                                }
+                              });
+                            },
+                            searchTitle: 'வகையரா (Select Vagaiyara)',
+                            resetOptionLabel: 'புதிய வகைரா சேர்க்கவும் (Add New Vagaiyara)',
+                          ),
+                        ),
+                        if (_selectedTopDropdown != _defaultTopDropdown) ...[
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: _deleteVagaiyara,
+                            icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                            label: const Text('நீக்கு (Delete)', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
-                  (val) {
-                    if (val == null) return;
-                    setState(() {
-                      _selectedTopDropdown = val;
-                      if (val == _defaultTopDropdown) {
-                        _clearForm();
-                      } else {
-                        final v = _vagaiyaras.firstWhere((item) => item['id'].toString() == val, orElse: () => null);
-                        if (v != null) {
-                          _selectedCommunity = v['community_id']?.toString() ?? _defaultCommunity;
-                          _selectedSubCommunity = v['sub_community_id'] != null && v['sub_community_id'] != 0 ? v['sub_community_id'].toString() : _defaultSubCommunity;
-                          _selectedKulam = v['kula_id']?.toString() ?? _defaultKulam;
-                          _selectedKulaDeivam = v['kula_deivam_id']?.toString() ?? _defaultKulaDeivam;
-                          
-                          _ourGenNameTamilController.text = v['our_gen_name_tamil'] ?? v['vagaiyara_name_tamil'] ?? '';
-                          _ourGenNameEnglishController.text = v['our_gen_name_english'] ?? v['vagaiyara_name_english'] ?? '';
-                          _ancestorGenNameTamilController.text = v['ancestor_gen_name_tamil'] ?? '';
-                          _ancestorGenNameEnglishController.text = v['ancestor_gen_name_english'] ?? '';
-                          _nativePlaceController.text = v['native_place'] ?? '';
-                          _currentPlaceController.text = v['current_place'] ?? '';
-                          _titleController.text = v['title'] ?? '';
-                          _infoController.text = v['info'] ?? '';
-                          _descriptionController.text = v['description'] ?? '';
-                          _historyController.text = v['history'] ?? '';
-                        }
-                      }
-                    });
-                  },
                 ),
                 const SizedBox(height: 32),
 
@@ -345,168 +407,214 @@ class _VagaiyaraManageContentState extends State<VagaiyaraManageContent> {
                 const SizedBox(height: 24),
 
                 // Community Dropdown
-                _buildDropdownField(
-                  'சமூகம் (Select Community) *',
-                  _selectedCommunity,
-                  [
-                    DropdownMenuItem<String>(
-                      value: _defaultCommunity,
-                      child: Text(_defaultCommunity, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: const TextSpan(
+                        text: 'சமூகம் (Select Community)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E1B4B),
+                        ),
+                        children: [
+                          TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
                     ),
-                    ..._communities.map((c) {
-                      final val = c['id'].toString();
-                      final t = c['community_name_tamil'] ?? '';
-                      final e = c['community_name_english'] ?? '';
-                      final display = e.toString().isNotEmpty ? '$t ($e)' : t;
-                      return DropdownMenuItem<String>(
-                        value: val,
-                        child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                      );
-                    }).toList(),
+                    const SizedBox(height: 8),
+                    SearchableDropdown(
+                      items: _communities,
+                      hint: _defaultCommunity,
+                      displayBuilder: (c) {
+                        final t = c['community_name_tamil'] ?? '';
+                        final e = c['community_name_english'] ?? '';
+                        return e.toString().isNotEmpty ? '$t ($e)' : t;
+                      },
+                      valueKey: 'id',
+                      selectedValue: _selectedCommunity == _defaultCommunity ? null : _selectedCommunity,
+                      onChanged: (val) {
+                        final actualVal = val ?? _defaultCommunity;
+                        setState(() {
+                          _selectedCommunity = actualVal;
+                          _selectedSubCommunity = _defaultSubCommunity;
+                          _selectedKulam = _defaultKulam;
+                          _selectedKulaDeivam = _defaultKulaDeivam;
+                        });
+                      },
+                      searchTitle: 'சமூகம் (Select Community)',
+                    ),
                   ],
-                  (val) => setState(() {
-                    _selectedCommunity = val!;
-                    _selectedSubCommunity = _defaultSubCommunity;
-                    _selectedKulam = _defaultKulam;
-                    _selectedKulaDeivam = _defaultKulaDeivam;
-                  }),
-                  isRedAsterisk: true,
                 ),
                 const SizedBox(height: 16),
 
                 // Sub-Community, Kulam & Kula Deivam Dropdowns
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final subCommunityItems = [
-                      DropdownMenuItem<String>(
-                        value: _defaultSubCommunity,
-                        child: Text(_defaultSubCommunity, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                      ),
-                      ..._subCommunities.where((sc) => sc['community_id'].toString() == _selectedCommunity).map((sc) {
-                        final val = sc['id'].toString();
-                        final t = sc['sub_community_name_tamil'] ?? '';
-                        final e = sc['sub_community_name_english'] ?? '';
-                        final display = e.toString().isNotEmpty ? '$t ($e)' : t;
-                        return DropdownMenuItem<String>(
-                          value: val,
-                          child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                        );
-                      }).toList(),
-                    ];
-
-                    final kulamItems = [
-                      DropdownMenuItem<String>(
-                        value: _defaultKulam,
-                        child: Text(_defaultKulam, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                      ),
-                      ..._kulas.where((k) => k['sub_community_id'].toString() == _selectedSubCommunity).map((k) {
-                        final val = k['id'].toString();
-                        final t = k['kula_name_tamil'] ?? '';
-                        final e = k['kula_name_english'] ?? '';
-                        final display = e.toString().isNotEmpty ? '$t ($e)' : t;
-                        return DropdownMenuItem<String>(
-                          value: val,
-                          child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                        );
-                      }).toList(),
-                    ];
-
-                    final kulaDeivamItems = [
-                      DropdownMenuItem<String>(
-                        value: _defaultKulaDeivam,
-                        child: Text(_defaultKulaDeivam, style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-                      ),
-                      ..._kulaDeivams.where((kd) => 
-                        (_selectedCommunity == _defaultCommunity || kd['community_id'].toString() == _selectedCommunity) &&
-                        (_selectedSubCommunity == _defaultSubCommunity || kd['sub_community_id'].toString() == _selectedSubCommunity || kd['sub_community_id'] == 0 || kd['sub_community_id'] == null) &&
-                        (_selectedKulam == _defaultKulam || kd['kula_id'].toString() == _selectedKulam || kd['kula_id'] == 0 || kd['kula_id'] == null)
-                      ).map((kd) {
-                        final val = kd['id'].toString();
-                        final t = kd['deity_name_tamil'] ?? '';
-                        final e = kd['deity_name_english'] ?? '';
-                        final display = e.toString().isNotEmpty ? '$t ($e)' : t;
-                        return DropdownMenuItem<String>(
-                          value: val,
-                          child: Text(display, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-                        );
-                      }).toList(),
-                    ];
+                    final subCommunityList = _subCommunities.where((sc) => sc['community_id'].toString() == _selectedCommunity).toList();
+                    
+                    final kulamList = _kulas.where((k) => k['sub_community_id'].toString() == _selectedSubCommunity).toList();
+                    
+                    final kulaDeivamList = _kulaDeivams.where((kd) => 
+                      (_selectedCommunity == _defaultCommunity || kd['community_id'].toString() == _selectedCommunity) &&
+                      (_selectedSubCommunity == _defaultSubCommunity || kd['sub_community_id'].toString() == _selectedSubCommunity || kd['sub_community_id'] == 0 || kd['sub_community_id'] == null) &&
+                      (_selectedKulam == _defaultKulam || kd['kula_id'].toString() == _selectedKulam || kd['kula_id'] == 0 || kd['kula_id'] == null)
+                    ).toList();
 
                     final isMobile = constraints.maxWidth < 600;
+                    
+                    Widget buildSubCommunityField() {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RichText(
+                            text: const TextSpan(
+                              text: 'உட்பிரிவு (Select Sub-Community)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E1B4B),
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: ' *',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SearchableDropdown(
+                            items: subCommunityList,
+                            hint: _defaultSubCommunity,
+                            displayBuilder: (sc) {
+                              final t = sc['sub_community_name_tamil'] ?? '';
+                              final e = sc['sub_community_name_english'] ?? '';
+                              return e.toString().isNotEmpty ? '$t ($e)' : t;
+                            },
+                            valueKey: 'id',
+                            selectedValue: _selectedSubCommunity == _defaultSubCommunity ? null : _selectedSubCommunity,
+                            onChanged: (val) {
+                              final actualVal = val ?? _defaultSubCommunity;
+                              setState(() {
+                                _selectedSubCommunity = actualVal;
+                                _selectedKulam = _defaultKulam;
+                                _selectedKulaDeivam = _defaultKulaDeivam;
+                              });
+                            },
+                            searchTitle: 'உட்பிரிவு (Select Sub-Community)',
+                          ),
+                        ],
+                      );
+                    }
+
+                    Widget buildKulamField() {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RichText(
+                            text: const TextSpan(
+                              text: 'குலம் (Select Kulam)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E1B4B),
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: ' *',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SearchableDropdown(
+                            items: kulamList,
+                            hint: _defaultKulam,
+                            displayBuilder: (k) {
+                              final t = k['kula_name_tamil'] ?? '';
+                              final e = k['kula_name_english'] ?? '';
+                              return e.toString().isNotEmpty ? '$t ($e)' : t;
+                            },
+                            valueKey: 'id',
+                            selectedValue: _selectedKulam == _defaultKulam ? null : _selectedKulam,
+                            onChanged: (val) {
+                              final actualVal = val ?? _defaultKulam;
+                              setState(() {
+                                _selectedKulam = actualVal;
+                                _selectedKulaDeivam = _defaultKulaDeivam;
+                              });
+                            },
+                            searchTitle: 'குலம் (Select Kulam)',
+                          ),
+                        ],
+                      );
+                    }
+
+                    Widget buildKulaDeivamField() {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RichText(
+                            text: const TextSpan(
+                              text: 'குலதெய்வம் (Select Kula Deivam)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E1B4B),
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: ' *',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SearchableDropdown(
+                            items: kulaDeivamList,
+                            hint: _defaultKulaDeivam,
+                            displayBuilder: (kd) {
+                              final t = kd['deity_name_tamil'] ?? '';
+                              final e = kd['deity_name_english'] ?? '';
+                              return e.toString().isNotEmpty ? '$t ($e)' : t;
+                            },
+                            valueKey: 'id',
+                            selectedValue: _selectedKulaDeivam == _defaultKulaDeivam ? null : _selectedKulaDeivam,
+                            onChanged: (val) {
+                              final actualVal = val ?? _defaultKulaDeivam;
+                              setState(() => _selectedKulaDeivam = actualVal);
+                            },
+                            searchTitle: 'குலதெய்வம் (Select Kula Deivam)',
+                          ),
+                        ],
+                      );
+                    }
+
                     if (isMobile) {
                       return Column(
                         children: [
-                          _buildDropdownField(
-                            'உட்பிரிவு (Select Sub-Community) *',
-                            _selectedSubCommunity,
-                            subCommunityItems,
-                            (val) => setState(() {
-                              _selectedSubCommunity = val!;
-                              _selectedKulam = _defaultKulam;
-                              _selectedKulaDeivam = _defaultKulaDeivam;
-                            }),
-                            isRedAsterisk: true,
-                          ),
+                          buildSubCommunityField(),
                           const SizedBox(height: 16),
-                          _buildDropdownField(
-                            'குலம் (Select Kulam) *',
-                            _selectedKulam,
-                            kulamItems,
-                            (val) => setState(() {
-                              _selectedKulam = val!;
-                              _selectedKulaDeivam = _defaultKulaDeivam;
-                            }),
-                            isRedAsterisk: true,
-                          ),
+                          buildKulamField(),
                           const SizedBox(height: 16),
-                          _buildDropdownField(
-                            'குலதெய்வம் (Select Kula Deivam) *',
-                            _selectedKulaDeivam,
-                            kulaDeivamItems,
-                            (val) => setState(() => _selectedKulaDeivam = val!),
-                            isRedAsterisk: true,
-                          ),
+                          buildKulaDeivamField(),
                         ],
                       );
                     }
                     return Row(
                       children: [
-                        Expanded(
-                          child: _buildDropdownField(
-                            'உட்பிரிவு (Select Sub-Community) *',
-                            _selectedSubCommunity,
-                            subCommunityItems,
-                            (val) => setState(() {
-                              _selectedSubCommunity = val!;
-                              _selectedKulam = _defaultKulam;
-                              _selectedKulaDeivam = _defaultKulaDeivam;
-                            }),
-                            isRedAsterisk: true,
-                          ),
-                        ),
+                        Expanded(child: buildSubCommunityField()),
                         const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildDropdownField(
-                            'குலம் (Select Kulam) *',
-                            _selectedKulam,
-                            kulamItems,
-                            (val) => setState(() {
-                              _selectedKulam = val!;
-                              _selectedKulaDeivam = _defaultKulaDeivam;
-                            }),
-                            isRedAsterisk: true,
-                          ),
-                        ),
+                        Expanded(child: buildKulamField()),
                         const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildDropdownField(
-                            'குலதெய்வம் (Select Kula Deivam) *',
-                            _selectedKulaDeivam,
-                            kulaDeivamItems,
-                            (val) => setState(() => _selectedKulaDeivam = val!),
-                            isRedAsterisk: true,
-                          ),
-                        ),
+                        Expanded(child: buildKulaDeivamField()),
                       ],
                     );
                   },
@@ -680,26 +788,29 @@ class _VagaiyaraManageContentState extends State<VagaiyaraManageContent> {
                   data: Theme.of(
                     context,
                   ).copyWith(dividerColor: Colors.transparent),
-                  child: ExpansionTile(
-                    title: Text(
-                      'கூடுதல் விவரங்கள் (Additional Details)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo.shade600,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ExpansionTile(
+                      title: Text(
+                        'கூடுதல் விவரங்கள் (Additional Details)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo.shade600,
+                        ),
                       ),
+                      iconColor: Colors.indigo.shade600,
+                      collapsedIconColor: Colors.indigo.shade600,
+                      childrenPadding: const EdgeInsets.only(top: 8),
+                      children: [
+                        _buildTextArea(
+                          'வரலாறு (History / Varalaru)',
+                          'வகைராவின் பூர்வீகம், வரலாறு, மற்றும் கோவில்கள்...',
+                          _historyController,
+                          minLines: 4,
+                        ),
+                      ],
                     ),
-                    iconColor: Colors.indigo.shade600,
-                    collapsedIconColor: Colors.indigo.shade600,
-                    childrenPadding: const EdgeInsets.only(top: 8),
-                    children: [
-                      _buildTextArea(
-                        'வரலாறு (History / Varalaru)',
-                        'வகைராவின் பூர்வீகம், வரலாறு, மற்றும் கோவில்கள்...',
-                        _historyController,
-                        minLines: 4,
-                      ),
-                    ],
                   ),
                 ),
                 const SizedBox(height: 32),

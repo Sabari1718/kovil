@@ -268,27 +268,30 @@ class SidebarMenu extends ConsumerWidget {
           // Logout Button
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: ListTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              hoverColor: Colors.white10,
-              leading: const Icon(Icons.logout, color: Colors.redAccent),
-              title: Text(
-                AppTranslations.translate('Logout', lang),
-                style: const TextStyle(color: Colors.redAccent),
-              ),
-              onTap: () async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
+            child: Material(
+              color: Colors.transparent,
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                hoverColor: Colors.white10,
+                leading: const Icon(Icons.logout, color: Colors.redAccent),
+                title: Text(
+                  AppTranslations.translate('Logout', lang),
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+                onTap: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
 
-                if (!context.mounted) return;
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                  (route) => false,
-                );
-              },
+                  if (!context.mounted) return;
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()),
+                    (route) => false,
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -311,51 +314,57 @@ class SidebarMenu extends ConsumerWidget {
 
     return Theme(
       data: ThemeData(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        initiallyExpanded: isExpanded,
-        onExpansionChanged: (expanded) => onItemExpanded(title, expanded),
-        leading: Icon(
-          icon,
-          color: isChildActive ? Colors.white : Colors.white54,
-        ),
-        title: Text(
-          AppTranslations.translate(title, lang),
-          style: TextStyle(
+      child: Material(
+        color: Colors.transparent,
+        child: ExpansionTile(
+          initiallyExpanded: isExpanded,
+          onExpansionChanged: (expanded) => onItemExpanded(title, expanded),
+          leading: Icon(
+            icon,
             color: isChildActive ? Colors.white : Colors.white54,
-            fontWeight: isChildActive ? FontWeight.bold : FontWeight.normal,
           ),
-        ),
-        collapsedIconColor: isChildActive ? Colors.white : Colors.white54,
-        iconColor: Colors.white,
-        backgroundColor: isChildActive
-            ? const Color(0xFF524EE1).withOpacity(0.1)
-            : Colors.transparent,
-        collapsedBackgroundColor: isChildActive
-            ? const Color(0xFF524EE1)
-            : Colors.transparent,
-        childrenPadding: const EdgeInsets.only(left: 54, bottom: 8),
-        children: children.map((child) {
-          bool isActive = activeScreen == child;
-          return ListTile(
-            title: Text(
-              AppTranslations.translate(child, lang),
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.white54,
-                fontSize: 14,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          title: Text(
+            AppTranslations.translate(title, lang),
+            style: TextStyle(
+              color: isChildActive ? Colors.white : Colors.white54,
+              fontWeight: isChildActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          collapsedIconColor: isChildActive ? Colors.white : Colors.white54,
+          iconColor: Colors.white,
+          backgroundColor: isChildActive
+              ? const Color(0xFF524EE1).withOpacity(0.1)
+              : Colors.transparent,
+          collapsedBackgroundColor: isChildActive
+              ? const Color(0xFF524EE1)
+              : Colors.transparent,
+          childrenPadding: const EdgeInsets.only(left: 54, bottom: 8),
+          children: children.map((child) {
+            bool isActive = activeScreen == child;
+            return Material(
+              color: Colors.transparent,
+              child: ListTile(
+                title: Text(
+                  AppTranslations.translate(child, lang),
+                  style: TextStyle(
+                    color: isActive ? Colors.white : Colors.white54,
+                    fontSize: 14,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                tileColor: isActive
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.transparent,
+                onTap: () => onScreenSelected(child),
               ),
-            ),
-            dense: true,
-            visualDensity: VisualDensity.compact,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            tileColor: isActive
-                ? Colors.white.withOpacity(0.1)
-                : Colors.transparent,
-            onTap: () => onScreenSelected(child),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -370,18 +379,21 @@ class SidebarMenu extends ConsumerWidget {
     bool isActive = activeScreen == title;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        tileColor: isActive ? const Color(0xFF524EE1) : Colors.transparent,
-        leading: Icon(icon, color: isActive ? Colors.white : Colors.white54),
-        title: Text(
-          AppTranslations.translate(title, lang),
-          style: TextStyle(
-            color: isActive ? Colors.white : Colors.white54,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: isActive ? const Color(0xFF524EE1) : Colors.transparent,
+          leading: Icon(icon, color: isActive ? Colors.white : Colors.white54),
+          title: Text(
+            AppTranslations.translate(title, lang),
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.white54,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
+          onTap: () => onScreenSelected(title),
         ),
-        onTap: () => onScreenSelected(title),
       ),
     );
   }

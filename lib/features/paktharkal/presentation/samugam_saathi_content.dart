@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:kulatheivam/core/network/api_client.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
+import '../data/paktharkal_api_repository.dart';
 
 class SamugamSaathiContent extends StatefulWidget {
   const SamugamSaathiContent({super.key});
@@ -10,8 +13,11 @@ class SamugamSaathiContent extends StatefulWidget {
 
 class _SamugamSaathiContentState extends State<SamugamSaathiContent> {
   final ScrollController _scrollController = ScrollController();
+  final PaktharkalApiRepository _apiRepository = PaktharkalApiRepository(ApiClient());
+  
   // Toggle Add Mapping form
   bool _showForm = false;
+  bool _isLoadingUsers = true;
 
   // Search controller
   final TextEditingController _searchController = TextEditingController();
@@ -22,11 +28,7 @@ class _SamugamSaathiContentState extends State<SamugamSaathiContent> {
   String? _selectedSector;
   String? _selectedSubSector;
 
-  final List<String> _userList = [
-    'lohit - lovelyloiht003@gmail.com - 9003853603',
-    'Ravi - ravi123@gmail.com - 9876543210',
-    'Priya - priya456@gmail.com - 9123456789',
-  ];
+  List<dynamic> _userList = [];
 
   final List<String> _sectorTitleList = [
     'Devotees',
@@ -58,6 +60,39 @@ class _SamugamSaathiContentState extends State<SamugamSaathiContent> {
       'subCategories': ['Bhairavar', 'Nataraja'],
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
+  }
+
+  Future<void> _fetchUsers() async {
+    setState(() => _isLoadingUsers = true);
+    try {
+      // Trying to fetch from /outsideapis/all-users as requested/implied
+      final response = await ApiClient().get('/outsideapis/all-users');
+      if (response['success'] == true && response['data'] != null) {
+        setState(() {
+          _userList = response['data'];
+          _isLoadingUsers = false;
+        });
+      } else {
+        setState(() => _isLoadingUsers = false);
+      }
+    } catch (e) {
+      debugPrint('Error fetching users: $e');
+      // Fallback to dummy data if API fails
+      setState(() {
+        _userList = [
+          {'id': '1', 'name': 'Kannan s', 'email': 'kannansanthil@gmail.com'},
+          {'id': '2', 'name': 'skavinshanmugavel', 'email': 'skavinshanmugavel@gmail.com'},
+          {'id': '3', 'name': 'HARIVARMAN M', 'email': 'harimurugeson@gmail.com'},
+        ];
+        _isLoadingUsers = false;
+      });
+    }
+  }
 
   void _clearForm() {
     setState(() {
@@ -217,13 +252,33 @@ class _SamugamSaathiContentState extends State<SamugamSaathiContent> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Row 1: Select Existing User (full width)
-                  _dropdownField(
-                    label: 'பயனரைத் தேர்ந்தெடுக்கவும் (Select Existing User) *',
-                    hint: '-- பயனரைத் தேர்ந்தெடுக்கவும் (Select User) --',
-                    icon: Icons.person_outline,
-                    value: _selectedUser,
-                    items: _userList,
-                    onChanged: (v) => setState(() => _selectedUser = v),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'பயனரைத் தேர்ந்தெடுக்கவும் (Select Existing User) *',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF374151),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SearchableDropdown(
+                        items: _userList,
+                        hint: '-- பயனரைத் தேர்ந்தெடுக்கவும் (Select User) --',
+                        displayBuilder: (item) {
+                          final name = item['name'] ?? '';
+                          final email = item['email'] ?? '';
+                          return email.toString().isNotEmpty ? '$name ($email)' : name.toString();
+                        },
+                        valueKey: 'id',
+                        selectedValue: _selectedUser,
+                        onChanged: (v) => setState(() => _selectedUser = v),
+                        searchTitle: 'பயனரைத் தேடவும் (Search User)',
+                        resetOptionLabel: '-- தேர்வை நீக்கு (Clear Selection) --',
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 

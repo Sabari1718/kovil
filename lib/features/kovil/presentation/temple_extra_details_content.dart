@@ -12,6 +12,8 @@ class TempleExtraDetailsContent extends ConsumerStatefulWidget {
   final String? mulavarName;
   final String? templeName;
   final Map<String, dynamic>? initialData;
+  final bool isDialog;
+  final VoidCallback? onSaveSuccess;
 
   const TempleExtraDetailsContent({
     super.key,
@@ -19,6 +21,8 @@ class TempleExtraDetailsContent extends ConsumerStatefulWidget {
     this.mulavarName,
     this.templeName,
     this.initialData,
+    this.isDialog = false,
+    this.onSaveSuccess,
   });
 
   @override
@@ -110,6 +114,7 @@ class _TempleExtraDetailsContentState
       TextEditingController();
   String _selectedGeneration = '-- தேர்ந்தெடுக்கவும் --';
   String _selectedMaritalStatus = 'Unmarried';
+  bool _isExistingRecord = false;
 
   // API Data
   bool _isLoadingDropdowns = true;
@@ -187,14 +192,24 @@ class _TempleExtraDetailsContentState
         });
       }
 
-      // If initialData is passed, prepopulate immediately
-      if (widget.initialData != null) {
-        _prepopulateForm(widget.initialData!);
-      } else if (widget.basicId != null) {
-        final basicDetail = await repository.getBasicDetail(widget.basicId!);
-        if (basicDetail != null && mounted) {
-          _prepopulateForm(basicDetail);
-        }
+      Map<String, dynamic>? dbDetail;
+      if (widget.basicId != null) {
+        dbDetail = await repository.getBasicDetail(widget.basicId!);
+      }
+
+      if (mounted) {
+        setState(() {
+          if (dbDetail != null) {
+            _isExistingRecord = true;
+            _prepopulateForm(dbDetail);
+          } else if (widget.initialData != null) {
+            _prepopulateForm(widget.initialData!);
+            if (widget.initialData!['heritage'] != null ||
+                widget.initialData!['temple_basic_id'] != null) {
+              _isExistingRecord = true;
+            }
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -591,6 +606,7 @@ class _TempleExtraDetailsContentState
       {'title': 'தெய்வங்கள்', 'subtitle': 'Deities'},
       {'title': 'வரலாறு & பாடல்கள்', 'subtitle': 'History & Songs'},
       {'title': 'சமூகம் & குலதெய்வம்', 'subtitle': 'Community & Deity'},
+      {'title': 'வகைரா & குடும்ப...', 'subtitle': 'Vagaiyara & Family'},
     ];
 
     return LayoutBuilder(
@@ -695,6 +711,8 @@ class _TempleExtraDetailsContentState
         return _buildHistoryAndSongsStep();
       case 3:
         return _buildCommunityAndDeityStep();
+      case 4:
+        return _buildVagaiyaraAndFamilyStep();
       default:
         return const SizedBox.shrink();
     }
@@ -1083,12 +1101,43 @@ class _TempleExtraDetailsContentState
                   ),
           ],
         ),
-        const SizedBox(height: 32),
+      ],
+    );
+  }
 
-        // Row 3: Vagaiyara, Tharpothaiya Vagaiyara, Generation
+  Widget _buildVagaiyaraAndFamilyStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.family_restroom_outlined, color: Colors.indigo.shade400),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'வகைரா மற்றும் குடும்ப விவரங்கள் (Vagaiyara & Family Details)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E1B4B),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'தங்கள் குடும்பத்தின் விபரங்களை இங்கே நிர்வகிக்கவும். (Manage your family details)',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        ),
+        const SizedBox(height: 16),
+        const Divider(color: Color(0xFFF1F5F9)),
+        const SizedBox(height: 24),
+
+        // Row 1: Vagaiyara, Tharpothaiya Vagaiyara, Generation
         _buildResponsiveThreeRow(
           _buildDropdownField(
-            'வகையறா (Select Vagaiyara)',
+            'வகைரா (Select Vagaiyara)',
             _selectedVagaiyara,
             [
               '-- வகையறா தேர்ந்தெடுக்கவும் --',
@@ -1101,8 +1150,8 @@ class _TempleExtraDetailsContentState
             (val) => setState(() => _selectedVagaiyara = val!),
           ),
           _buildTextField(
-            'தற்போதைய வகையறா (Tharpothaiya Vagaiyara)',
-            'தற்போதைய வகையறாவை உ...',
+            'தற்போதைய வகைரா (Tharpothaiya Vagaiyara)',
+            'தற்போதைய வகைராவை உள்ளிடவும்',
             _tharpothaiyaVagaiyaraController,
             Icons.domain,
           ),
@@ -1145,8 +1194,8 @@ class _TempleExtraDetailsContentState
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _buildRadioOption('Unmarried\n(திருமணமாகாதவர்)', 'Unmarried'),
-                  _buildRadioOption('Married\n(திருமணமானவர்)', 'Married'),
+                  _buildRadioOption('Unmarried (திருமணமாகாதவர்)', 'Unmarried'),
+                  _buildRadioOption('Married (திருமணமானவர்)', 'Married'),
                 ],
               ),
             ],
@@ -2125,17 +2174,35 @@ class _TempleExtraDetailsContentState
     };
 
     final repository = ref.read(kovilApiRepositoryProvider);
-    final success = await repository.updateTempleDetails(
-      widget.basicId!,
-      payload,
-    );
+    final bool success;
+    if (_isExistingRecord) {
+      success = await repository.updateTempleDetails(
+        widget.basicId!,
+        payload,
+      );
+    } else {
+      success = await repository.addTempleDetails(payload);
+    }
 
     if (mounted) {
       if (success) {
-        await CustomDeleteDialog.showSuccess(context, title: 'வெற்றிகரமாக மாற்றப்பட்டது', message: 'Update successful');
+        final title = _isExistingRecord
+            ? 'வெற்றிகரமாக மாற்றப்பட்டது'
+            : 'வெற்றிகரமாக சேர்க்கப்பட்டது';
+        final msg = _isExistingRecord ? 'Update successful' : 'Saved successfully';
+        await CustomDeleteDialog.showSuccess(context, title: title, message: msg);
         // Maybe close dialog or clear form
         if (mounted) {
-          Navigator.of(context).pop(true);
+          if (widget.isDialog) {
+            Navigator.of(context).pop(true);
+          } else {
+            setState(() {
+              _isExistingRecord = true;
+            });
+            if (widget.onSaveSuccess != null) {
+              widget.onSaveSuccess!();
+            }
+          }
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2174,7 +2241,7 @@ class _TempleExtraDetailsContentState
 
         final saveButton = ElevatedButton.icon(
           onPressed: () {
-            if (_currentStep < 3) {
+            if (_currentStep < 4) {
               setState(() {
                 _currentStep++;
               });
@@ -2183,10 +2250,10 @@ class _TempleExtraDetailsContentState
             }
           },
           icon: Icon(
-            _currentStep == 3 ? Icons.save_as_outlined : Icons.arrow_forward,
+            _currentStep == 4 ? Icons.save_as_outlined : Icons.arrow_forward,
             size: 18,
           ),
-          label: Text(_currentStep == 3 ? 'Save Temple Details' : 'Next Step'),
+          label: Text(_currentStep == 4 ? 'Save Temple Details' : 'Next Step'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF524EE1),
             foregroundColor: Colors.white,

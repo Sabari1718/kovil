@@ -79,13 +79,38 @@ class KovilApiRepository {
   Future<Map<String, dynamic>?> getBasicDetail(int id) async {
     try {
       final response = await _apiClient.get('/temple_detail/basic/$id');
-      if (response['code'] == 200 && response['data'] != null) {
-        return response['data'];
+      if (response['data'] != null && response['data'] is Map) {
+        final dataMap = response['data'];
+        if ((dataMap['code'] == 200 || dataMap['result'] == 'Success') &&
+            dataMap['data'] != null) {
+          final detailData = dataMap['data'];
+          if (detailData is List && detailData.isNotEmpty) {
+            return Map<String, dynamic>.from(detailData[0]);
+          } else if (detailData is Map) {
+            return Map<String, dynamic>.from(detailData);
+          }
+        }
       }
       return null;
     } catch (e) {
       print('Failed to fetch basic detail: $e');
       return null;
+    }
+  }
+
+  Future<bool> addTempleDetails(Map<String, dynamic> data) async {
+    try {
+      final response = await _apiClient.post('/temple_detail/create', data);
+      if (response['data'] != null && response['data'] is Map) {
+        final dataMap = response['data'];
+        if (dataMap['code'] == 200 || dataMap['result'] == 'Success') {
+          return true;
+        }
+      }
+      return response['code'] == 200 || response['success'] == true;
+    } catch (e) {
+      print('Failed to add temple details: $e');
+      return false;
     }
   }
 

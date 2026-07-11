@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kulatheivam/core/network/api_client.dart';
+import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
 import '../data/kovil_api_repository.dart';
 
 class ThakavalContent extends StatefulWidget {
@@ -180,19 +181,22 @@ class _ThakavalContentState extends State<ThakavalContent> {
                   setState(() => _isLoading = false);
 
                   if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('தகவல்கள் புதுப்பிக்கப்பட்டன!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    if (mounted) {
+                      CustomDeleteDialog.showSuccess(
+                        context,
+                        title: 'வெற்றிகரமாக சேமிக்கப்பட்டது!',
+                        message: 'தகவல்கள் வெற்றிகரமாக புதுப்பிக்கப்பட்டன.',
+                      );
+                    }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('பிழை ஏற்பட்டது!'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('பிழை ஏற்பட்டது!'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 }),
               ],

@@ -3,6 +3,7 @@ import '../../kulam/presentation/vagaiyara_manage_content.dart';
 import '../../../core/network/api_client.dart';
 import '../data/paktharkal_api_repository.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
 
 class KulamMakkalContent extends StatefulWidget {
   const KulamMakkalContent({super.key});
@@ -618,31 +619,37 @@ class _KulamMakkalContentState extends State<KulamMakkalContent> {
           child: LayoutBuilder(
             builder: (ctx, bc) {
               final isSmall = bc.maxWidth < 500;
-              final child1 = RadioListTile<String>(
-                title: const Text(
-                  'முத்தையா வகைரா (Original Family)',
-                  style: TextStyle(fontSize: 13),
+              final child1 = Material(
+                color: Colors.transparent,
+                child: RadioListTile<String>(
+                  title: const Text(
+                    'முத்தையா வகைரா (Original Family)',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  value: 'muthaiya',
+                  groupValue: _familyType,
+                  activeColor: const Color(0xFF524EE1),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (val) {
+                    if (val != null) setState(() => _familyType = val);
+                  },
                 ),
-                value: 'muthaiya',
-                groupValue: _familyType,
-                activeColor: const Color(0xFF524EE1),
-                contentPadding: EdgeInsets.zero,
-                onChanged: (val) {
-                  if (val != null) setState(() => _familyType = val);
-                },
               );
-              final child2 = RadioListTile<String>(
-                title: const Text(
-                  'தற்போதைய வகைரா (Branch Family)',
-                  style: TextStyle(fontSize: 13),
+              final child2 = Material(
+                color: Colors.transparent,
+                child: RadioListTile<String>(
+                  title: const Text(
+                    'தற்போதைய வகைரா (Branch Family)',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  value: 'current',
+                  groupValue: _familyType,
+                  activeColor: const Color(0xFF524EE1),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (val) {
+                    if (val != null) setState(() => _familyType = val);
+                  },
                 ),
-                value: 'current',
-                groupValue: _familyType,
-                activeColor: const Color(0xFF524EE1),
-                contentPadding: EdgeInsets.zero,
-                onChanged: (val) {
-                  if (val != null) setState(() => _familyType = val);
-                },
               );
 
               if (isSmall) {
@@ -1474,58 +1481,71 @@ class _KulamMakkalContentState extends State<KulamMakkalContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: const TextSpan(
-            text: 'வகைரா (Select Vagaiyara) ',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1E1B4B),
-            ),
-            children: [
-              TextSpan(
-                text: '*',
-                style: TextStyle(color: Colors.red),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _selectedVagairaId,
-              hint: const Text(
-                'வகைரா தேர்ந்தெடுக்கவும்',
-                style: TextStyle(fontSize: 13),
-              ),
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.grey.shade600,
-              ),
-              items: _vagaiyaraList.map((var value) {
-                return DropdownMenuItem<String>(
-                  value: value['id']?.toString(),
-                  child: Text(
-                    value['vagaiyara_name_tamil']?.toString() ?? 'Unknown',
-                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            RichText(
+              text: const TextSpan(
+                text: 'வகைரா (Select Vagaiyara) ',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E1B4B),
+                ),
+                children: [
+                  TextSpan(
+                    text: '*',
+                    style: TextStyle(color: Colors.red),
                   ),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _selectedVagairaId = val);
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                final tabController = DefaultTabController.of(context);
+                if (tabController != null) {
+                  tabController.animateTo(5); // Index 5 is 'வகைரா'
                 }
               },
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.add,
+                    size: 14,
+                    color: Color(0xFF10B981),
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'சேர்க்க',
+                    style: TextStyle(
+                      color: Color(0xFF10B981),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SearchableDropdown(
+          items: _vagaiyaraList,
+          hint: 'வகைரா தேர்ந்தெடுக்கவும்',
+          displayBuilder: (v) {
+            final t = v['our_gen_name_tamil'] ?? v['vagaiyara_name_tamil'] ?? 'Unknown';
+            final e = v['our_gen_name_english'] ?? v['vagaiyara_name_english'] ?? '';
+            return e.toString().isNotEmpty ? '$t ($e)' : t;
+          },
+          valueKey: 'id',
+          selectedValue: _selectedVagairaId,
+          onChanged: (val) {
+            if (val != null) {
+              setState(() => _selectedVagairaId = val);
+            }
+          },
+          searchTitle: 'வகைரா (Select Vagaiyara)',
         ),
       ],
     );

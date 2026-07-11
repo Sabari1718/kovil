@@ -114,6 +114,9 @@ class _TempleTabsContentState extends ConsumerState<TempleTabsContent>
                 basicId: widget.screenArguments?['basicId'],
                 mulavarName: widget.screenArguments?['mulavarName'],
                 templeName: widget.screenArguments?['templeName'],
+                onSaveSuccess: () {
+                  _tabController.animateTo(1);
+                },
               ),
               TempleListContent(
                 onScreenSelected: (screen) {

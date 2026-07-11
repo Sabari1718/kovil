@@ -1,4 +1,5 @@
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import 'package:kulatheivam/core/widgets/searchable_dropdown.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -153,6 +154,41 @@ class _SamugamManageContentState extends State<SamugamManageContent> {
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _deleteCommunity() async {
+    if (_selectedCommunity == _defaultDropdownValue) return;
+    final selectedId = int.parse(_selectedCommunity);
+    
+    final confirm = await CustomDeleteDialog.showConfirmation(
+      context,
+      title: 'நிச்சயமாக நீக்க\nவேண்டுமா?',
+      message: 'இந்த சமூகத்தின் விபரம் நிரந்தரமாக நீக்கப்படும்! (Delete this community?)',
+    );
+    
+    if (confirm == true) {
+      setState(() => _isSaving = true);
+      try {
+        await _apiRepository.deleteCommunity(selectedId);
+        if (mounted) {
+          CustomDeleteDialog.showSuccess(
+            context,
+            title: 'வெற்றி',
+            message: 'சமூகத்தின் விவரம் நீக்கப்பட்டது (Community deleted successfully)',
+          );
+        }
+        _clearForm();
+        await _fetchCommunities();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting community: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -356,26 +392,29 @@ class _SamugamManageContentState extends State<SamugamManageContent> {
                     data: Theme.of(
                       context,
                     ).copyWith(dividerColor: Colors.transparent),
-                    child: ExpansionTile(
-                      title: const Text(
-                        'கூடுதல் விவரங்கள் (Additional Details)',
-                        style: TextStyle(
-                          color: Color(0xFF524EE1),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: ExpansionTile(
+                        title: const Text(
+                          'கூடுதல் விவரங்கள் (Additional Details)',
+                          style: TextStyle(
+                            color: Color(0xFF524EE1),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        iconColor: const Color(0xFF524EE1),
+                        collapsedIconColor: const Color(0xFF524EE1),
+                        childrenPadding: const EdgeInsets.all(16),
+                        children: [
+                          _buildTextArea(
+                            'வரலாறு (History / Varalaru)',
+                            'சமூகத்தின் பூர்வீகம், வரலாறு, மற்றும் ஆவணங்கள்...',
+                            _historyController,
+                            minLines: 4,
+                          ),
+                        ],
                       ),
-                      iconColor: const Color(0xFF524EE1),
-                      collapsedIconColor: const Color(0xFF524EE1),
-                      childrenPadding: const EdgeInsets.all(16),
-                      children: [
-                        _buildTextArea(
-                          'வரலாறு (History / Varalaru)',
-                          'சமூகத்தின் பூர்வீகம், வரலாறு, மற்றும் ஆவணங்கள்...',
-                          _historyController,
-                          minLines: 4,
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -441,55 +480,23 @@ class _SamugamManageContentState extends State<SamugamManageContent> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _selectedCommunity,
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.grey.shade600,
-              ),
-              items: [
-                DropdownMenuItem<String>(
-                  value: _defaultDropdownValue,
-                  child: Text(
-                    _defaultDropdownValue,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-                ..._communities.map((community) {
-                  final val = community['id'].toString();
-                  final display = '${community['community_name_tamil']} (${community['community_name_english']})';
-                  return DropdownMenuItem<String>(
-                    value: val,
-                    child: Text(
-                      display,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ],
-              onChanged: (newValue) {
-                if (newValue != null) {
+        Row(
+          children: [
+            Expanded(
+              child: SearchableDropdown(
+                items: _communities,
+                hint: _defaultDropdownValue,
+                displayBuilder: (community) => '${community['community_name_tamil']} (${community['community_name_english']})',
+                valueKey: 'id',
+                selectedValue: _selectedCommunity == _defaultDropdownValue ? null : _selectedCommunity,
+                onChanged: (newValue) {
+                  final actualVal = newValue ?? _defaultDropdownValue;
                   setState(() {
-                    _selectedCommunity = newValue;
-                    if (newValue == _defaultDropdownValue) {
+                    _selectedCommunity = actualVal;
+                    if (actualVal == _defaultDropdownValue) {
                       _clearForm();
                     } else {
-                      final selectedId = int.parse(newValue);
+                      final selectedId = int.parse(actualVal);
                       final community = _communities.firstWhere((c) => c['id'] == selectedId);
                       _nameTamilController.text = community['community_name_tamil'] ?? '';
                       _nameEnglishController.text = community['community_name_english'] ?? '';
@@ -508,10 +515,25 @@ class _SamugamManageContentState extends State<SamugamManageContent> {
                       _iconFile = null;
                     }
                   });
-                }
-              },
+                },
+                searchTitle: 'சமூகம் (Select Community)',
+                resetOptionLabel: 'புதிய சமூகம் சேர்க்கவும் (Add New Community)',
+              ),
             ),
-          ),
+            if (_selectedCommunity != _defaultDropdownValue) ...[
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _deleteCommunity,
+                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                label: const Text('நீக்கு (Delete)', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );

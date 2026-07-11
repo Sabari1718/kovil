@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 class CustomDeleteDialog {
-  static Future<bool> showConfirmation(BuildContext context) async {
+  static Future<bool> showConfirmation(
+    BuildContext context, {
+    String title = 'நிச்சயமாக நீக்க\nவேண்டுமா?',
+    String message = 'Are you sure you want to delete?',
+  }) async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -29,20 +33,20 @@ class CustomDeleteDialog {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
-                  'நிச்சயமாக நீக்க\nவேண்டுமா?',
+                Text(
+                  title,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Are you sure you want to delete?',
+                Text(
+                  message,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 const SizedBox(height: 32),
                 Wrap(
@@ -100,10 +104,12 @@ class CustomDeleteDialog {
   }
 
   static Future<void> showSuccess(BuildContext context, {String title = 'வெற்றி', String message = 'விவரங்கள் புதுப்பிக்கப்பட்டது'}) async {
+    BuildContext? dialogContext;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext ctx) {
+        dialogContext = ctx;
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -149,10 +155,10 @@ class CustomDeleteDialog {
       },
     );
 
-    // Auto close after 2 seconds
-    await Future.delayed(const Duration(seconds: 2));
-    if (context.mounted && Navigator.canPop(context)) {
-      Navigator.of(context).pop();
+    // Auto close after 3 seconds
+    await Future.delayed(const Duration(seconds: 3));
+    if (dialogContext != null && dialogContext!.mounted) {
+      Navigator.of(dialogContext!).pop();
     }
   }
 

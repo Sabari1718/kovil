@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:kulatheivam/core/network/api_client.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
+import '../data/poojai_api_repository.dart';
 
 class PookaiContent extends StatefulWidget {
   final Function(String, {Map<String, dynamic>? arguments}) onScreenSelected;
@@ -12,55 +14,140 @@ class PookaiContent extends StatefulWidget {
 class _PookaiContentState extends State<PookaiContent> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
+  final PoojaiApiRepository _apiRepository = PoojaiApiRepository(ApiClient());
+  
   String _selectedDeity = 'அனைத்து தெய்வங்கள்';
   String _selectedCategory = 'அனைத்து பூஜைகள்';
+  bool _isLoading = true;
 
-  final List<Map<String, String>> _allPoojais = [
-    {
-      'deity': 'மூலவர்',
-      'sub': 'mulavar',
-      'category': 'நித்திய பூஜை',
-      'kalam': 'இரண்டு கால பூஜை',
-      'nilamai': 'திங்கட்கிழமை',
-      'time': 'சாயங்காலம்',
-      'date': '2026-05-08',
-      'status': 'active',
-    },
-    {
-      'deity': 'மூலவர்',
-      'sub': 'mulavar',
-      'category': 'கிழமை பூஜை',
-      'kalam': 'நான்கு கால பூஜை',
-      'nilamai': 'வெள்ளி',
-      'time': 'காலை',
-      'date': '2026-05-08',
-      'status': 'active',
-    },
-    {
-      'deity': 'வைதண்ட ஏகாதசி சிறப்பு பூஜை',
-      'sub': 't',
-      'category': 'சிறப்பு பூஜை',
-      'kalam': 'one_time',
-      'nilamai': 'திங்கட்கிழமை',
-      'time': '05:00:00',
-      'date': '2026-12-23',
-      'status': 'active',
-    },
-  ];
+  List<Map<String, dynamic>> _allPoojais = [];
 
-  List<Map<String, String>> get _filtered {
+  @override
+  void initState() {
+    super.initState();
+    _fetchPoojais();
+  }
+
+  Future<void> _fetchPoojais() async {
+    setState(() => _isLoading = true);
+    try {
+      final nithiya = await _apiRepository.getNithiyaPoojais();
+      final kilamai = await _apiRepository.getKilamaiPoojais();
+      final special = await _apiRepository.getSpecialPoojais();
+
+      final List<Map<String, dynamic>> combined = [];
+      
+      for (var p in nithiya) {
+        combined.add({
+          ...p,
+          'category': 'நித்திய பூஜை',
+          'deity': p['deity_name_tamil'] ?? 'மூலவர்',
+          'sub': p['deity_name_english'] ?? 'mulavar',
+          'kalam': p['pooja_kalam_tamil'] ?? '',
+          'nilamai': p['kilamai_tamil'] ?? '-',
+          'time': p['pooja_time'] ?? '',
+          'date': p['pooja_date'] ?? '-',
+          'status': 'active',
+        });
+      }
+      
+      for (var p in kilamai) {
+        combined.add({
+          ...p,
+          'category': 'கிழமை பூஜை',
+          'deity': p['deity_name_tamil'] ?? 'மூலவர்',
+          'sub': p['deity_name_english'] ?? 'mulavar',
+          'kalam': p['pooja_kalam_tamil'] ?? '',
+          'nilamai': p['kilamai_tamil'] ?? '-',
+          'time': p['pooja_time'] ?? '',
+          'date': p['pooja_date'] ?? '-',
+          'status': 'active',
+        });
+      }
+
+      for (var p in special) {
+        combined.add({
+          ...p,
+          'category': 'சிறப்பு பூஜை',
+          'deity': p['pooja_name_tamil'] ?? 'சிறப்பு பூஜை',
+          'sub': p['pooja_name_english'] ?? '',
+          'kalam': p['pooja_type'] ?? 'one_time',
+          'nilamai': p['kilamai_tamil'] ?? '-',
+          'time': p['pooja_time'] ?? '',
+          'date': p['pooja_date'] ?? '-',
+          'status': 'active',
+        });
+      }
+
+      setState(() {
+        _allPoojais = combined;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      debugPrint('Error fetching poojais: $e');
+    }
+  }
+
+  Future<void> _deletePoojai(Map<String, dynamic> poojai) async {
+    final confirmed = await CustomDeleteDialog.showConfirmation(
+      context,
+      title: 'நிச்சயமாக நீக்க வேண்டுமா?',
+      message: 'Are you sure you want to delete this pooja record?',
+    );
+
+    if (confirmed) {
+      setState(() => _isLoading = true);
+      try {
+        bool success = false;
+        final id = int.tryParse(poojai['id'].toString()) ?? 0;
+        final category = poojai['category'];
+
+        if (category == 'நித்திய பூஜை') {
+          success = await _apiRepository.deleteNithiyaPoojai(id);
+        } else if (category == 'கிழமை பூஜை') {
+          success = await _apiRepository.deleteKilamaiPoojai(id);
+        } else if (category == 'சிறப்பு பூஜை') {
+          success = await _apiRepository.deleteSpecialPoojai(id);
+        }
+
+        if (success) {
+          if (mounted) {
+            await CustomDeleteDialog.showDeleted(
+              context,
+              title: 'நீக்கப்பட்டது',
+              message: 'Record deleted successfully',
+            );
+          }
+          _fetchPoojais();
+        } else {
+          setState(() => _isLoading = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('நீக்குவதில் பிழை ஏற்பட்டது'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        debugPrint('Error deleting poojai: $e');
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
     return _allPoojais.where((p) {
       final q = _searchController.text.toLowerCase();
       final matchSearch =
           q.isEmpty ||
-          p['deity']!.toLowerCase().contains(q) ||
-          p['category']!.toLowerCase().contains(q);
+          p['deity'].toString().toLowerCase().contains(q) ||
+          p['category'].toString().toLowerCase().contains(q);
       final matchDeity =
           _selectedDeity == 'அனைத்து தெய்வங்கள்' ||
-          p['deity'] == _selectedDeity;
+          p['deity'].toString() == _selectedDeity;
       final matchCat =
           _selectedCategory == 'அனைத்து பூஜைகள்' ||
-          p['category'] == _selectedCategory;
+          p['category'].toString() == _selectedCategory;
       return matchSearch && matchDeity && matchCat;
     }).toList();
   }
@@ -73,6 +160,12 @@ class _PookaiContentState extends State<PookaiContent> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(50.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
     final filtered = _filtered;
     return SingleChildScrollView(
       controller: _scrollController,
@@ -232,7 +325,7 @@ class _PookaiContentState extends State<PookaiContent> {
                       ),
                     ),
                     TextButton.icon(
-                      onPressed: () => setState(() {}),
+                      onPressed: _fetchPoojais,
                       icon: const Icon(
                         Icons.refresh,
                         size: 16,
@@ -544,7 +637,7 @@ class _PookaiContentState extends State<PookaiContent> {
                                       color: Colors.red.shade400,
                                       size: 16,
                                     ),
-                                    onPressed: () {},
+                                    onPressed: () => _deletePoojai(p),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
                                   ),
