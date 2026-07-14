@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,8 +42,56 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
   @override
   void initState() {
     super.initState();
-    _selectedReligion = _defaultReligion;
+    _selectedReligion = 'Hindu';
     _selectedDeitiesWorship = _defaultDeitiesWorship;
+    _pincodeController.addListener(_onPincodeChanged);
+  }
+
+  Future<void> _onPincodeChanged() async {
+    final text = _pincodeController.text.trim();
+    if (text.length == 6) {
+      try {
+        final url = Uri.parse(
+          'https://localcity.jobes24x7.com/api/pincode/details/$text',
+        );
+        final response = await http.get(url);
+        debugPrint('Pincode API Status: ${response.statusCode}');
+        debugPrint('Pincode API Response: ${response.body}');
+        
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final decoded = jsonDecode(response.body);
+          List<dynamic>? listData;
+          
+          if (decoded['data'] is List) {
+            listData = decoded['data'];
+          } else if (decoded['data'] != null && decoded['data']['data'] is List) {
+            listData = decoded['data']['data'];
+          }
+          
+          if (listData != null && listData.isNotEmpty) {
+            final details = listData[0];
+            setState(() {
+              _villageController.text = details['city_name']?.toString() ?? '';
+              _districtController.text = details['district_name']?.toString() ?? '';
+              _stateController.text = details['state_name']?.toString() ?? '';
+              _countryController.text = details['country_name']?.toString() ?? 'இந்தியா';
+            });
+            debugPrint('Auto-filled Pincode details successfully.');
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching pincode details: $e');
+      }
+    } else {
+      if (_villageController.text.isNotEmpty || _districtController.text.isNotEmpty) {
+        setState(() {
+          _villageController.clear();
+          _districtController.clear();
+          _stateController.clear();
+          _countryController.text = 'இந்தியா';
+        });
+      }
+    }
   }
 
   @override
@@ -150,6 +201,11 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
                     'பின்கோடு (Pincode)',
                     '# 6 இலக்க பின்கோடு',
                     _pincodeController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(6),
+                    ],
                   ),
                   _buildTextField(
                     'ஊர் (Village/Town)',
@@ -188,37 +244,12 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
 
                 // Dropdowns
                 _buildResponsiveRow(
-                  ref
-                      .watch(sectorsProvider)
-                      .when(
-                        data: (sectors) {
-                          final items = [
-                            _defaultReligion,
-                            'Hindu',
-                          ];
-                          if (!items.contains(_selectedReligion)) {
-                            _selectedReligion = _defaultReligion;
-                          }
-                          return _buildDropdownField(
-                            'மதம் (Religion) *',
-                            _selectedReligion,
-                            items,
-                            (val) {
-                              setState(() {
-                                _selectedReligion = val!;
-                                _selectedDeitiesWorship =
-                                    _defaultDeitiesWorship;
-                              });
-                            },
-                            isRedAsterisk: true,
-                          );
-                        },
-                        loading: () => const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(child: CircularProgressIndicator()),
-                        ),
-                        error: (err, stack) => Text('Error: $err'),
-                      ),
+                  _buildTextField(
+                    'மதம் (Religion) *',
+                    'Hindu',
+                    TextEditingController(text: 'Hindu'),
+                    readOnly: true,
+                  ),
                   ref
                       .watch(subSectorsProvider)
                       .when(
@@ -266,16 +297,6 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
                         error: (err, stack) => Text('Error: $err'),
                       ),
                 ),
-                const SizedBox(height: 24),
-
-                // Categories
-                _buildCategoriesSection(),
-
-                const SizedBox(height: 16),
-
-                // Selected Chips
-                _buildSelectedChips(),
-
                 const SizedBox(height: 48),
 
                 // Action Buttons
@@ -868,6 +889,9 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
     String hint,
     TextEditingController controller, {
     Widget? prefixIcon,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -892,6 +916,9 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          readOnly: readOnly,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
@@ -937,11 +964,10 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
     return ElevatedButton(
       onPressed: () async {
         // Validate dropdowns
-        if (_selectedReligion == _defaultReligion ||
-            _selectedDeitiesWorship == _defaultDeitiesWorship) {
+        if (_selectedDeitiesWorship == _defaultDeitiesWorship) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please select Religion and Deities Worship.'),
+              content: Text('Please select Deities Worship.'),
             ),
           );
           return;

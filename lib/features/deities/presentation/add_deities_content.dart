@@ -222,46 +222,43 @@ class _AddDeitiesContentState extends ConsumerState<AddDeitiesContent> {
           ),
           const SizedBox(height: 24),
 
-          // Quick Navigation Cards (Scrollable Row)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                _buildQuickCard('பரிவார தெய்வங்கள்', 'PARIVARA DEITIES', const [
-                  Color(0xFF4F46E5),
-                  Color(0xFF3730A3),
-                ], Icons.people_outline),
-                const SizedBox(width: 16),
-                _buildQuickCard('பிகரா தெய்வங்கள்', 'PIGARA DEITIES', const [
-                  Color(0xFF0D9488),
-                  Color(0xFF115E59),
-                ], Icons.shield_outlined),
-                const SizedBox(width: 16),
-                _buildQuickCard('உப தெய்வங்கள்', 'UPA DEITIES', const [
-                  Color(0xFF8B5CF6),
-                  Color(0xFF6D28D9),
-                ], Icons.layers_outlined),
-                const SizedBox(width: 16),
-                _buildQuickCard('காவல் தெய்வங்கள்', 'KAVAL DEITIES', const [
-                  Color(0xFFEF4444),
-                  Color(0xFF991B1B),
-                ], Icons.security),
-                const SizedBox(width: 16),
-                _buildQuickCard('பாலி தெய்வங்கள்', 'BALI DEITIES', const [
-                  Color(0xFFF59E0B),
-                  Color(0xFFD97706),
-                ], Icons.menu_book),
-                const SizedBox(width: 16),
-                _buildQuickCard(
-                  'கோவில் தெய்வங்கள்',
-                  'KOVIL DEITIES',
-                  const [Color(0xFFEC4899), Color(0xFFBE185D)],
-                  Icons.favorite_border,
-                  targetScreen: 'கோவில் தெய்வங்கள் சேர்க்க',
-                ),
-              ],
-            ),
+          // Quick Navigation Cards (Grid)
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1.25,
+            children: [
+              _buildQuickCard('பரிவார தெய்வங்கள்', 'PARIVARA DEITIES', const [
+                Color(0xFF4F46E5),
+                Color(0xFF3730A3),
+              ], Icons.people_outline),
+              _buildQuickCard('பிகரா தெய்வங்கள்', 'PIGARA DEITIES', const [
+                Color(0xFF0D9488),
+                Color(0xFF115E59),
+              ], Icons.shield_outlined),
+              _buildQuickCard('உப தெய்வங்கள்', 'UPA DEITIES', const [
+                Color(0xFF8B5CF6),
+                Color(0xFF6D28D9),
+              ], Icons.layers_outlined),
+              _buildQuickCard('காவல் தெய்வங்கள்', 'KAVAL DEITIES', const [
+                Color(0xFFEF4444),
+                Color(0xFF991B1B),
+              ], Icons.security),
+              _buildQuickCard('பாலி தெய்வங்கள்', 'BALI DEITIES', const [
+                Color(0xFFF59E0B),
+                Color(0xFFD97706),
+              ], Icons.menu_book),
+              _buildQuickCard(
+                'கோவில் தெய்வங்கள்',
+                'KOVIL DEITIES',
+                const [Color(0xFFEC4899), Color(0xFFBE185D)],
+                Icons.favorite_border,
+                targetScreen: 'கோவில் தெய்வங்கள் சேர்க்க',
+              ),
+            ],
           ),
           const SizedBox(height: 32),
 
@@ -541,8 +538,6 @@ class _AddDeitiesContentState extends ConsumerState<AddDeitiesContent> {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 185,
-        height: 135,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           gradient: LinearGradient(

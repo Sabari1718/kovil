@@ -210,73 +210,51 @@ class _PookaiContentState extends State<PookaiContent> {
           const SizedBox(height: 28),
 
           // 3 Category Cards
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isMobile = constraints.maxWidth < 700;
-              final cards = [
-                _buildCategoryCard(
-                  'நித்திய பூஜை',
-                  'DAILY RITUALS',
-                  Icons.flash_on,
-                  const LinearGradient(
-                    colors: [Color(0xFF6C63FF), Color(0xFF4A47D1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  'நிர்வகிக்க >',
-                  'நித்திய பூஜை',
+          GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1.1,
+            children: [
+              _buildCategoryCard(
+                'நித்திய பூஜை',
+                'DAILY RITUALS',
+                Icons.flash_on,
+                const LinearGradient(
+                  colors: [Color(0xFF6C63FF), Color(0xFF4A47D1)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                _buildCategoryCard(
-                  'கிழமை பூஜை',
-                  'WEEKLY RITUALS',
-                  Icons.calendar_view_week,
-                  const LinearGradient(
-                    colors: [Color(0xFF2563EB), Color(0xFF1E40AF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  'நிர்வகிக்க >',
-                  'கிழமை பூஜை',
+                'நிர்வகிக்க >',
+                'நித்திய பூஜை',
+              ),
+              _buildCategoryCard(
+                'கிழமை பூஜை',
+                'WEEKLY RITUALS',
+                Icons.calendar_view_week,
+                const LinearGradient(
+                  colors: [Color(0xFF2563EB), Color(0xFF1E40AF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                _buildCategoryCard(
-                  'சிறப்பு பூஜை',
-                  'SPECIAL OCCASIONS',
-                  Icons.star_outline,
-                  const LinearGradient(
-                    colors: [Color(0xFF059669), Color(0xFF047857)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  'நிர்வகிக்க >',
-                  'சிறப்பு பூஜை',
+                'நிர்வகிக்க >',
+                'கிழமை பூஜை',
+              ),
+              _buildCategoryCard(
+                'சிறப்பு பூஜை',
+                'SPECIAL OCCASIONS',
+                Icons.star_outline,
+                const LinearGradient(
+                  colors: [Color(0xFF059669), Color(0xFF047857)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ];
-
-              if (isMobile) {
-                return Column(
-                  children: cards
-                      .map(
-                        (c) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: c,
-                        ),
-                      )
-                      .toList(),
-                );
-              }
-              return Row(
-                children: cards
-                    .map(
-                      (c) => Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: c,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              );
-            },
+                'நிர்வகிக்க >',
+                'சிறப்பு பூஜை',
+              ),
+            ],
           ),
           const SizedBox(height: 32),
 
@@ -670,8 +648,7 @@ class _PookaiContentState extends State<PookaiContent> {
       onTap: () => widget.onScreenSelected(targetScreen),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        height: 130,
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(16),
