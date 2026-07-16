@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import '../../../core/network/api_client.dart';
 
 final deitiesApiRepositoryProvider = Provider<DeitiesApiRepository>((ref) {
@@ -638,7 +639,7 @@ class DeitiesApiRepository {
     }
   }
 
-  Future<bool> addKovilDeivangal(Map<String, String> data, XFile? photo) async {
+  Future<bool> addKovilDeivangal(Map<String, String> data, XFile? photo, {Map<String, Uint8List>? extraImages}) async {
     try {
       final List<http.MultipartFile> multipartFiles = [];
       if (photo != null) {
@@ -646,6 +647,13 @@ class DeitiesApiRepository {
         multipartFiles.add(
           http.MultipartFile.fromBytes('photo', bytes, filename: photo.name),
         );
+      }
+      if (extraImages != null) {
+        for (var entry in extraImages.entries) {
+          multipartFiles.add(
+            http.MultipartFile.fromBytes(entry.key, entry.value.toList(), filename: '${entry.key}.jpg'),
+          );
+        }
       }
       final response = await _apiClient.postMultipartFiles(
         '/kovil_deivangal/save',

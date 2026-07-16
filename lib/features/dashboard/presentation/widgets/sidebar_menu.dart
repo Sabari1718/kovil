@@ -32,7 +32,21 @@ class SidebarMenu extends ConsumerWidget {
 
     return Container(
       width: isMobile ? MediaQuery.of(context).size.width : 260,
-      color: const Color(0xFF1E2336), // Dark blue sidebar color
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF130E24), Color(0xFF1A1531)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        boxShadow: [
+          if (!isMobile)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 15,
+              offset: const Offset(4, 0),
+            )
+        ],
+      ),
       child: Column(
         children: [
           // Logo Area
@@ -47,15 +61,24 @@ class SidebarMenu extends ConsumerWidget {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
                   ),
                 ),
-                Text(
-                  'ADMIN',
-                  style: TextStyle(
-                    color: Colors.indigo.shade300,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFF9070FF), Color(0xFF524EE1)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ).createShader(bounds),
+                  child: const Text(
+                    'ADMIN',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
                 if (isMobile) ...[
@@ -211,29 +234,52 @@ class SidebarMenu extends ConsumerWidget {
           if (isMobile)
             Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: 24.0,
+                horizontal: 20.0,
                 vertical: 8.0,
               ),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.08),
+                      Colors.white.withOpacity(0.03),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.indigoAccent,
-                      radius: 20,
-                      child: Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : 'S',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF6B4EE1), Color(0xFFA259FF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: CircleAvatar(
+                        backgroundColor: const Color(0xFF130E24),
+                        radius: 20,
+                        child: Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'S',
+                          style: const TextStyle(
+                            color: Color(0xFF9070FF),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,17 +288,17 @@ class SidebarMenu extends ConsumerWidget {
                             userName,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
                             userEmail,
-                            style: const TextStyle(
-                              color: Colors.white54,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
                               fontSize: 12,
                             ),
                             maxLines: 1,
@@ -267,18 +313,20 @@ class SidebarMenu extends ConsumerWidget {
             ),
           // Logout Button
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             child: Material(
               color: Colors.transparent,
               child: ListTile(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.redAccent.withOpacity(0.3), width: 1),
                 ),
-                hoverColor: Colors.white10,
+                tileColor: Colors.redAccent.withOpacity(0.08),
+                hoverColor: Colors.redAccent.withOpacity(0.15),
                 leading: const Icon(Icons.logout, color: Colors.redAccent),
                 title: Text(
                   AppTranslations.translate('Logout', lang),
-                  style: const TextStyle(color: Colors.redAccent),
+                  style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
                 ),
                 onTap: () async {
                   final prefs = await SharedPreferences.getInstance();
@@ -378,21 +426,43 @@ class SidebarMenu extends ConsumerWidget {
   ) {
     bool isActive = activeScreen == title;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: isActive ? const Color(0xFF524EE1) : Colors.transparent,
-          leading: Icon(icon, color: isActive ? Colors.white : Colors.white54),
-          title: Text(
-            AppTranslations.translate(title, lang),
-            style: TextStyle(
-              color: isActive ? Colors.white : Colors.white54,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        decoration: isActive
+            ? BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6B4EE1), Color(0xFF4C3B99)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6B4EE1).withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              )
+            : BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+        child: Material(
+          color: Colors.transparent,
+          child: ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: Icon(icon, color: isActive ? Colors.white : Colors.white60),
+            title: Text(
+              AppTranslations.translate(title, lang),
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.white60,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                fontSize: 15,
+              ),
             ),
+            hoverColor: Colors.white.withOpacity(0.05),
+            onTap: () => onScreenSelected(title),
           ),
-          onTap: () => onScreenSelected(title),
         ),
       ),
     );

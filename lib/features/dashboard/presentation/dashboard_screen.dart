@@ -13,6 +13,7 @@ import '../../kovil/presentation/temple_extra_details_content.dart';
 import '../../kovil/presentation/temple_tabs_content.dart';
 import '../../deities/presentation/mulavar_content.dart';
 import '../../deities/presentation/add_deities_content.dart';
+import '../../deities/presentation/add_new_deities_wizard_content.dart';
 import '../../deities/presentation/parivara_deities_content.dart';
 import '../../deities/presentation/pigara_deities_content.dart';
 import '../../deities/presentation/upa_deities_content.dart';
@@ -48,6 +49,7 @@ import 'widgets/sidebar_menu.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/language_provider.dart';
+import '../../../core/providers/theme_provider.dart';
 import '../../../core/localization/app_translations.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -101,22 +103,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   final List<_CategoryItem> _dashboardCategories = [
-    _CategoryItem('கோவில் சேர்க்க', Icons.add_home_work, assetPath: 'assets/images/icon_add_temple.png'),
-    _CategoryItem('தெய்வங்கள்', Icons.self_improvement, assetPath: 'assets/images/icon_deities.png'),
-    _CategoryItem('கோவில்', Icons.temple_hindu_outlined, assetPath: 'assets/images/icon_temple.png'),
-    _CategoryItem('பூஜைகள்', Icons.spa, assetPath: 'assets/images/icon_pooja.png'),
-    _CategoryItem('திருவிழாக்கள்', Icons.festival_outlined, assetPath: 'assets/images/icon_festival.png'),
-    _CategoryItem('பிரார்த்தனை', Icons.clean_hands, assetPath: 'assets/images/icon_prayer.png'),
-    _CategoryItem('பக்தர்கள்', Icons.people_outline, assetPath: 'assets/images/icon_devotees.png'),
-    _CategoryItem('குலம்', Icons.groups, assetPath: 'assets/images/icon_kulam.png'),
-    _CategoryItem('நிர்வாகம்', Icons.admin_panel_settings, assetPath: 'assets/images/icon_admin.png'),
-    _CategoryItem('முகவரி', Icons.location_on, assetPath: 'assets/images/icon_address.png'),
-    _CategoryItem('தகவல்', Icons.info_outline, assetPath: 'assets/images/icon_info.png'),
+    _CategoryItem('தெய்வங்களைச் சேர்க்க', Icons.add_moderator, assetPath: 'assets/images/deities_real.png'),
+    _CategoryItem('கோவில் சேர்க்க', Icons.add_home_work, assetPath: 'assets/images/add_temple_real.png'),
+    _CategoryItem('தெய்வங்கள்', Icons.self_improvement, assetPath: 'assets/images/deities_real.png'),
+    _CategoryItem('கோவில்', Icons.temple_hindu_outlined, assetPath: 'assets/images/temple_real.png'),
+    _CategoryItem('பூஜைகள்', Icons.spa, assetPath: 'assets/images/poojas_real.png'),
+    _CategoryItem('திருவிழாக்கள்', Icons.festival_outlined, assetPath: 'assets/images/festivals_real.png'),
+    _CategoryItem('பிரார்த்தனை', Icons.clean_hands, assetPath: 'assets/images/prayers_real.png'),
+    _CategoryItem('பக்தர்கள்', Icons.people_outline, assetPath: 'assets/images/devotees_real.png'),
+    _CategoryItem('குலம்', Icons.groups, assetPath: 'assets/images/kulam_real.png'),
+    _CategoryItem('நிர்வாகம்', Icons.admin_panel_settings, assetPath: 'assets/images/admin_real.png'),
+    _CategoryItem('முகவரி', Icons.location_on, assetPath: 'assets/images/address_real.png'),
+    _CategoryItem('தகவல்', Icons.info_outline, assetPath: 'assets/images/info_real.png'),
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width > 900;
+    final showGlobalAppBar = _activeScreen == 'Home' || _activeScreen == 'Dashboard';
 
     return PopScope(
       canPop: _navigationStack.isEmpty,
@@ -126,21 +130,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F6FA), // Light background color
-        appBar: isDesktop ? null : _buildAppBar(isDesktop),
-        drawer: isDesktop ? null : _buildSidebar(context, isMobile: true),
-        body: Row(
-          children: [
-            if (isDesktop) _buildSidebar(context, isMobile: false),
-            Expanded(
-              child: Column(
-                children: [
-                  if (isDesktop) _buildAppBar(isDesktop),
-                  Expanded(child: _getActiveScreenContent(isDesktop)),
-                ],
+        backgroundColor: Theme.of(context).brightness == Brightness.light ? const Color(0xFFF4F6FA) : Theme.of(context).scaffoldBackgroundColor,
+        appBar: (isDesktop || !showGlobalAppBar) ? null : _buildAppBar(isDesktop),
+        drawer: (isDesktop || !showGlobalAppBar) ? null : _buildSidebar(context, isMobile: true),
+        body: SafeArea(
+          child: Row(
+            children: [
+              if (isDesktop) _buildSidebar(context, isMobile: false),
+              Expanded(
+                child: Column(
+                  children: [
+                    if (isDesktop && showGlobalAppBar) _buildAppBar(isDesktop),
+                    Expanded(child: _getActiveScreenContent(isDesktop)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -166,6 +172,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return const VagaiyaraManageContent();
       case 'முன்னோர்களைச் சேர்க்க':
         return const AncestorsManageContent();
+      case 'தெய்வங்களைச் சேர்க்க':
+        return AddNewDeitiesWizardContent(
+          onScreenSelected: (screen, {arguments}) {
+            _navigateTo(screen, arguments: arguments);
+          },
+        );
       case 'கோவில் சேர்க்க':
         return TempleManageContent(
           onScreenSelected: (screen, {arguments}) {
@@ -275,62 +287,205 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   PreferredSizeWidget _buildAppBar(bool isDesktop) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final hour = DateTime.now().hour;
+    String greeting = 'வணக்கம்';
+    if (hour < 12) {
+      greeting = 'காலை வணக்கம்'; // Good morning
+    } else if (hour < 17) {
+      greeting = 'மதிய வணக்கம்'; // Good afternoon
+    } else {
+      greeting = 'மாலை வணக்கம்'; // Good evening
+    }
+
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark 
+                ? [const Color(0xFF291B54), const Color(0xFF120C24)]
+                : [const Color(0xFF432C81), const Color(0xFF6B4EE1)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      ),
       elevation: 0,
-      scrolledUnderElevation: 0, // Prevents color change on scroll
-      iconTheme: const IconThemeData(color: Colors.black87, size: 28),
-      title: null, // Removed temple title
+      scrolledUnderElevation: 8,
+      shadowColor: isDark ? Colors.black54 : Colors.black12,
+      toolbarHeight: 75,
+      titleSpacing: 0,
+      leadingWidth: 70,
       leading: _navigationStack.isNotEmpty
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: _goBack,
-            )
-          : null, // Uses default Drawer hamburger menu
+          ? _buildPremiumLeading(Icons.arrow_back, isDark, _goBack)
+          : (isDesktop ? null : Builder(
+              builder: (context) => _buildPremiumLeading(Icons.menu_rounded, isDark, () => Scaffold.of(context).openDrawer()),
+            )),
+      title: Padding(
+        padding: EdgeInsets.only(left: (_navigationStack.isEmpty && isDesktop) ? 24.0 : 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              greeting,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey[400] : Colors.white70,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              widget.userName.isNotEmpty ? widget.userName : 'பயனர்',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
+        _buildPremiumIconButton(
+          icon: Icons.notifications_none_rounded,
+          isDark: isDark,
           onPressed: () {},
         ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: const Icon(Icons.dark_mode_outlined),
-          onPressed: () {},
+        const SizedBox(width: 12),
+        _buildPremiumIconButton(
+          icon: ref.watch(themeProvider) == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+          isDark: isDark,
+          onPressed: () {
+            ref.read(themeProvider.notifier).toggleTheme();
+          },
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         if (isDesktop) ...[
           const SizedBox(width: 16),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                widget.userName,
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: isDark ? Colors.white24 : Colors.white30,
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      widget.userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      widget.userEmail,
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.white70, 
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Text(
-                widget.userEmail,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          CircleAvatar(
-            backgroundColor: Colors.indigoAccent,
-            child: Text(
-              widget.userName.isNotEmpty
-                  ? widget.userName[0].toUpperCase()
-                  : 'S',
-              style: const TextStyle(color: Colors.white),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF6B4EE1), Color(0xFFA259FF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    backgroundColor: isDark ? const Color(0xFF1E1E2C) : Colors.white,
+                    radius: 16,
+                    child: Text(
+                      widget.userName.isNotEmpty
+                          ? widget.userName[0].toUpperCase()
+                          : 'S',
+                      style: const TextStyle(
+                        color: Color(0xFF6B4EE1), 
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 24),
         ],
       ],
+    );
+  }
+
+  Widget _buildPremiumLeading(IconData icon, bool isDark, VoidCallback onPressed) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(left: 16),
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDark ? Colors.white24 : Colors.white30,
+            width: 1.5,
+          ),
+        ),
+        child: IconButton(
+          icon: Icon(icon, size: 22, color: Colors.white),
+          onPressed: onPressed,
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumIconButton({
+    required IconData icon,
+    required bool isDark,
+    required VoidCallback onPressed,
+  }) {
+    return Center(
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.08) : Colors.white.withOpacity(0.15),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDark ? Colors.white24 : Colors.white30,
+            width: 1.5,
+          ),
+        ),
+        child: IconButton(
+          icon: Icon(icon, size: 22),
+          onPressed: onPressed,
+          color: Colors.white,
+          padding: EdgeInsets.zero,
+        ),
+      ),
     );
   }
 
@@ -472,10 +627,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           Text(
             AppTranslations.translate('முதன்மை சேவைகள்', lang),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
             ),
           ),
           const SizedBox(height: 24),
@@ -537,58 +692,73 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
              _showSubCategoryDialog(category, lang);
           }
         },
-        child: Column(
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Expanded(
-              flex: 4,
-              child: SizedBox(
-                width: double.infinity,
-                child: category.assetPath != null
-                    ? Image.asset(
-                        category.assetPath!,
-                        fit: BoxFit.cover,
-                        color: color,
-                        colorBlendMode: BlendMode.darken,
-                      )
-                    : Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.05),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(category.icon, size: 32, color: Colors.black87),
-                        ),
+            category.assetPath != null
+                ? Image.asset(
+                    category.assetPath!,
+                    fit: BoxFit.cover,
+                  )
+                : Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.05),
+                        shape: BoxShape.circle,
                       ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
+                      child: Icon(category.icon, size: 32, color: Colors.black87),
+                    ),
+                  ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
               child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                padding: const EdgeInsets.fromLTRB(12, 40, 12, 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
+                      Colors.black.withOpacity(0.95),
+                    ],
+                  ),
+                ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
                       AppTranslations.translate(category.title, lang),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (category.subItems.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        '${category.subItems.length} Options',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w700,
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                        ),
+                        child: Text(
+                          '${category.subItems.length} Options',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
