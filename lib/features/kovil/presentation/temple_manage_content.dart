@@ -244,40 +244,71 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
 
                 // Dropdowns
                 _buildResponsiveRow(
-                  _buildTextField(
-                    'மதம் (Religion) *',
-                    'Hindu',
-                    TextEditingController(text: 'Hindu'),
-                    readOnly: true,
-                  ),
-                  ref
-                      .watch(subSectorsProvider)
-                      .when(
-                        data: (subSectors) {
-                          final filteredSubSectors = subSectors
-                              .where((e) => e.sectorName == _selectedReligion)
-                              .toList();
-                          final items = [
-                            _defaultDeitiesWorship,
-                            ...filteredSubSectors.map((e) => e.subSectorName),
-                          ];
-                          if (!items.contains(_selectedDeitiesWorship)) {
-                            // Safe state update outside build phase if necessary, or just rely on items having the default
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted &&
-                                  _selectedDeitiesWorship !=
-                                      _defaultDeitiesWorship) {
-                                setState(
-                                  () => _selectedDeitiesWorship =
-                                      _defaultDeitiesWorship,
-                                );
-                              }
+                  Builder(
+                    builder: (context) {
+                      final sectors = ref.watch(sectorsProvider).value ?? [];
+                      final religionNames = sectors.map((s) => s.sectorName).toList();
+                      final religionItems = [
+                        _defaultReligion,
+                        if (religionNames.isEmpty) 'Hindu' else ...religionNames,
+                      ].toSet().toList();
+
+                      final currentReligion = religionItems.contains(_selectedReligion)
+                          ? _selectedReligion
+                          : (religionItems.contains('Hindu') ? 'Hindu' : religionItems.first);
+
+                      return _buildDropdownField(
+                        'மதம் (Religion) *',
+                        currentReligion,
+                        religionItems,
+                        (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedReligion = val;
+                              _selectedDeitiesWorship = _defaultDeitiesWorship;
                             });
                           }
+                        },
+                        isRedAsterisk: true,
+                        prefixIcon: const Icon(
+                          Icons.explore_outlined,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                  ),
+                  ref.watch(subSectorsProvider).when(
+                        data: (subSectors) {
+                          final isHindu = _selectedReligion.toLowerCase() == 'hindu';
+                          final filteredSubSectors = _selectedReligion == _defaultReligion
+                              ? <SubSectorModel>[]
+                              : subSectors
+                                  .where((e) =>
+                                      (e.sectorName?.toLowerCase() == _selectedReligion.toLowerCase()) ||
+                                      (e.sectorName == null || e.sectorName!.isEmpty))
+                                  .toList();
 
-                          // fallback if _selectedDeitiesWorship is completely invalid for some reason during build
-                          final displayValue =
-                              items.contains(_selectedDeitiesWorship)
+                          final defaultList = [
+                            'Saivam',
+                            'Vaishnavam',
+                            'Shaktham',
+                            'Kaumaram',
+                            'Ganapathyam',
+                            'Kuladeivam',
+                            'Gramadevathai',
+                          ];
+
+                          final listNames = filteredSubSectors.isNotEmpty
+                              ? filteredSubSectors.map((e) => e.subSectorName).toList()
+                              : (isHindu ? defaultList : <String>[]);
+
+                          final items = [
+                            _defaultDeitiesWorship,
+                            ...listNames,
+                          ].toSet().toList();
+
+                          final displayValue = items.contains(_selectedDeitiesWorship)
                               ? _selectedDeitiesWorship
                               : _defaultDeitiesWorship;
 
@@ -285,16 +316,55 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
                             'தெய்வங்கள் வழிபாடு (Deities Worship) *',
                             displayValue,
                             items,
-                            (val) =>
-                                setState(() => _selectedDeitiesWorship = val!),
+                            (val) => setState(() => _selectedDeitiesWorship = val ?? _defaultDeitiesWorship),
                             isRedAsterisk: true,
+                            prefixIcon: const Icon(
+                              Icons.show_chart,
+                              size: 18,
+                              color: Colors.grey,
+                            ),
                           );
                         },
-                        loading: () => const Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Center(child: CircularProgressIndicator()),
+                        loading: () => _buildDropdownField(
+                          'தெய்வங்கள் வழிபாடு (Deities Worship) *',
+                          _defaultDeitiesWorship,
+                          [_defaultDeitiesWorship],
+                          (val) {},
+                          isRedAsterisk: true,
+                          prefixIcon: const Icon(
+                            Icons.show_chart,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
                         ),
-                        error: (err, stack) => Text('Error: $err'),
+                        error: (err, stack) {
+                          final fallbackItems = [
+                            _defaultDeitiesWorship,
+                            'Saivam',
+                            'Vaishnavam',
+                            'Shaktham',
+                            'Kaumaram',
+                            'Ganapathyam',
+                            'Kuladeivam',
+                            'Gramadevathai',
+                          ];
+                          final displayValue = fallbackItems.contains(_selectedDeitiesWorship)
+                              ? _selectedDeitiesWorship
+                              : _defaultDeitiesWorship;
+
+                          return _buildDropdownField(
+                            'தெய்வங்கள் வழிபாடு (Deities Worship) *',
+                            displayValue,
+                            fallbackItems,
+                            (val) => setState(() => _selectedDeitiesWorship = val ?? _defaultDeitiesWorship),
+                            isRedAsterisk: true,
+                            prefixIcon: const Icon(
+                              Icons.show_chart,
+                              size: 18,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
                       ),
                 ),
                 const SizedBox(height: 48),
@@ -502,7 +572,15 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No primary categories found.',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ),
+                  ),
                 ),
           ),
         ],
@@ -647,7 +725,15 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
                       child: CircularProgressIndicator(),
                     ),
                   ),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+                  error: (e, _) => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Text(
+                        'No sub categories found.',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ),
+                  ),
                 ),
           ),
         ],
@@ -799,7 +885,13 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
     List<String> items,
     Function(String?) onChanged, {
     bool isRedAsterisk = false,
+    Widget? prefixIcon,
   }) {
+    final effectiveItems = items.toSet().toList();
+    final effectiveValue = effectiveItems.contains(selectedValue)
+        ? selectedValue
+        : (effectiveItems.isNotEmpty ? effectiveItems.first : null);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -830,30 +922,40 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: selectedValue,
-              icon: Icon(
-                Icons.keyboard_arrow_down,
-                color: Colors.grey.shade600,
-              ),
-              items: items.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: value.startsWith('--')
-                          ? Colors.grey.shade600
-                          : Colors.black87,
+          child: Row(
+            children: [
+              if (prefixIcon != null) ...[
+                prefixIcon,
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: effectiveValue,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Colors.grey.shade600,
                     ),
+                    items: effectiveItems.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: value.startsWith('--')
+                                ? Colors.grey.shade600
+                                : Colors.black87,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: onChanged,
                   ),
-                );
-              }).toList(),
-              onChanged: onChanged,
-            ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -964,6 +1066,15 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
     return ElevatedButton(
       onPressed: () async {
         // Validate dropdowns
+        if (_selectedReligion == _defaultReligion) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select Religion.'),
+            ),
+          );
+          return;
+        }
+
         if (_selectedDeitiesWorship == _defaultDeitiesWorship) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -973,16 +1084,37 @@ class _TempleManageContentState extends ConsumerState<TempleManageContent> {
           return;
         }
 
-        // Find the selected sector and sub-sector models
+        // Find the selected sector and sub-sector models safely
         final sectors = ref.read(sectorsProvider).value ?? [];
-        final selectedSector = sectors.firstWhere(
-          (s) => s.sectorName == _selectedReligion,
-        );
+        final selectedSector = sectors
+            .where(
+              (s) => s.sectorName.toLowerCase() == _selectedReligion.toLowerCase(),
+            )
+            .firstOrNull ??
+            SectorModel(
+              id: 63,
+              sectorName: _selectedReligion != _defaultReligion
+                  ? _selectedReligion
+                  : 'Hindu',
+              sectorTitleId: 63,
+              sectorTitleName: 'Devotees',
+            );
 
         final subSectors = ref.read(subSectorsProvider).value ?? [];
-        final selectedSubSector = subSectors.firstWhere(
-          (s) => s.subSectorName == _selectedDeitiesWorship,
-        );
+        final selectedSubSector = subSectors
+            .where(
+              (s) =>
+                  s.subSectorName.toLowerCase() ==
+                  _selectedDeitiesWorship.toLowerCase(),
+            )
+            .firstOrNull ??
+            SubSectorModel(
+              id: 1,
+              sectorId: selectedSector.id,
+              sectorName: selectedSector.sectorName,
+              subSectorName: _selectedDeitiesWorship,
+              sectorTitleName: selectedSector.sectorTitleName,
+            );
 
         final data = {
           'country': _countryController.text,

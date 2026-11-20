@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 import '../providers/auth_provider.dart';
@@ -45,7 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
               child: Container(
                 width: isDesktop ? 900 : 450,
                 decoration: BoxDecoration(
@@ -72,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildLeftPanel(isMobile: true),
-                          _buildRightPanel(),
+                          _buildRightPanel(isMobile: true),
                         ],
                       ),
               ),
@@ -85,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildLeftPanel({bool isMobile = false}) {
     return Container(
-      padding: const EdgeInsets.all(40.0),
+      padding: EdgeInsets.all(isMobile ? 24.0 : 40.0),
       decoration: BoxDecoration(
         color: const Color(0xFF2E2A6B), // Deep purple card color
         borderRadius: isMobile
@@ -202,9 +201,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildRightPanel() {
+  Widget _buildRightPanel({bool isMobile = false}) {
     return Container(
-      padding: const EdgeInsets.all(40.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 20.0 : 40.0,
+        vertical: isMobile ? 24.0 : 40.0,
+      ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -349,16 +351,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onPressed: ref.watch(authNotifierProvider).isLoading
                 ? null
                 : () async {
-                    final email = _emailController.text.trim();
+                    var email = _emailController.text.trim();
                     final password = _passwordController.text;
+
+                    // Fix common mobile keyboard typos like @gamil.com
+                    if (email.toLowerCase().endsWith('@gamil.com')) {
+                      email = email.replaceAll(RegExp(r'@gamil\.com$', caseSensitive: false), '@gmail.com');
+                      _emailController.text = email;
+                    } else if (email.toLowerCase().endsWith('@gmial.com')) {
+                      email = email.replaceAll(RegExp(r'@gmial\.com$', caseSensitive: false), '@gmail.com');
+                      _emailController.text = email;
+                    }
+
+                    ScaffoldMessenger.of(context).clearSnackBars();
 
                     if (email.isEmpty || password.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
+                        SnackBar(
+                          content: const Text(
                             'Please enter both email and password.',
                           ),
                           backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          margin: const EdgeInsets.all(16),
                         ),
                       );
                       return;
@@ -371,6 +389,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     if (!mounted) return;
 
                     if (success) {
+                      // Instantly dismiss any pending or active snackbars before navigating!
+                      ScaffoldMessenger.of(context).clearSnackBars();
+
                       final authState = ref.read(authNotifierProvider);
                       final userName =
                           authState.response?.user?.name ?? 'Admin';
@@ -388,10 +409,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       );
                     } else {
                       final error = ref.read(authNotifierProvider).error;
+                      final isNewUser = error != null && error.contains('பதிவு');
+                      ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(error ?? 'Login Failed'),
                           backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          margin: const EdgeInsets.all(16),
+                          duration: const Duration(seconds: 3),
+                          action: isNewUser
+                              ? SnackBarAction(
+                                  label: 'பதிவு செய்க',
+                                  textColor: Colors.yellowAccent,
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                                    _showRegisterDialog(context);
+                                  },
+                                )
+                              : null,
                         ),
                       );
                     }
@@ -435,6 +474,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'புதிய பயனரா? ',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  _showRegisterDialog(context);
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4.0),
+                  child: Text(
+                    'பதிவு செய்க (Register Here)',
+                    style: TextStyle(
+                      color: Color(0xFF524EE1),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 32),
           Center(
             child: FittedBox(
@@ -453,6 +521,159 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showRegisterDialog(BuildContext context) {
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController(text: _emailController.text);
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF524EE1).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person_add, color: Color(0xFF524EE1)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'புதிய கணக்கு பதிவு\n(New User Register)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('முழு பெயர் (Full Name)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'எ.கா: சபாரீஸ்வரன்',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text('மின்னஞ்சல் (Email)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: 'user@example.com',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text('கடவுச்சொல் (Password)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: obscure,
+                  decoration: InputDecoration(
+                    hintText: '********',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setDialogState(() => obscure = !obscure),
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('ரத்து (Cancel)'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF524EE1),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                final email = emailCtrl.text.trim();
+                final pass = passwordCtrl.text;
+
+                if (name.isEmpty || email.isEmpty || pass.isEmpty) {
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('அனைத்து விவரங்களையும் நிரப்பவும் (Please fill all fields)'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
+                  return;
+                }
+
+                final success = await ref
+                    .read(authNotifierProvider.notifier)
+                    .register(name, email, pass);
+
+                if (!context.mounted) return;
+
+                if (success) {
+                  Navigator.pop(dialogCtx);
+                  setState(() {
+                    _emailController.text = email;
+                    _passwordController.text = pass;
+                  });
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        'பதிவு வெற்றிகரமாக முடிந்தது! இப்போது உள்நுழையலாம். (Registration successful! You can login now)',
+                      ),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      margin: const EdgeInsets.all(16),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                } else {
+                  final error = ref.read(authNotifierProvider).error;
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(error ?? 'Registration failed'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      margin: const EdgeInsets.all(16),
+                    ),
+                  );
+                }
+              },
+              child: const Text('பதிவு செய் (Register)'),
+            ),
+          ],
+        ),
       ),
     );
   }

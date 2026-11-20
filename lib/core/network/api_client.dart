@@ -2,6 +2,16 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  ApiException(this.message, {this.statusCode});
+
+  @override
+  String toString() => message;
+}
+
 class ApiClient {
   static const String baseUrl = 'https://temple.jobes24x7.com/api';
 
@@ -30,8 +40,19 @@ class ApiClient {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to load data: ${response.statusCode}');
+        String message = 'Failed to load data: ${response.statusCode}';
+        try {
+          final errorData = jsonDecode(response.body);
+          if (errorData is Map) {
+            message = errorData['error']?.toString() ??
+                errorData['message']?.toString() ??
+                message;
+          }
+        } catch (_) {}
+        throw ApiException(message, statusCode: response.statusCode);
       }
+    } on ApiException {
+      rethrow;
     } catch (e) {
       debugPrint('API ERROR: $e');
       throw Exception('Network error: $e');

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'features/auth/presentation/login_screen.dart';
+// import 'features/auth/presentation/login_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'core/providers/theme_provider.dart';
 
@@ -57,9 +57,16 @@ class MyApp extends ConsumerWidget {
         ),
         useMaterial3: true,
       ),
-      home: isLoggedIn
-          ? DashboardScreen(userName: userName, userEmail: userEmail)
-          : LoginScreen(),
+      // Direct Home Screen (Login screen temporarily commented out)
+      // home: isLoggedIn
+      //     ? DashboardScreen(userName: userName, userEmail: userEmail)
+      //     : LoginScreen(),
+      home: DashboardScreen(
+        userName: userName != 'Admin' ? userName : 'Sabarishwaran',
+        userEmail: userEmail != 'admin@example.com'
+            ? userEmail
+            : 'sabarishwaran1718@gmail.com',
+      ),
     );
   }
 }

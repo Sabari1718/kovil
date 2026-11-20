@@ -65,13 +65,49 @@ class AuthNotifier extends Notifier<AuthState> {
         }
         return true; // Success
       } else {
-        state = state.copyWith(isLoading: false, error: response.message);
+        state = state.copyWith(
+          isLoading: false,
+          error: response.message.isNotEmpty ? response.message : 'Login failed',
+        );
         return false; // Failed
       }
+    } on ApiException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.message,
+      );
+      return false;
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: 'Failed to connect. Please check your internet and try again.',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> register(String name, String email, String password) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    final repository = ref.read(authRepositoryProvider);
+
+    try {
+      final success = await repository.registerUser(
+        name: name,
+        email: email,
+        password: password,
+      );
+      state = state.copyWith(isLoading: false);
+      return success;
+    } on ApiException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'பதிவு செய்வதில் பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.',
       );
       return false;
     }
