@@ -5,11 +5,11 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kulatheivam/main.dart';
+import 'package:kulatheivam/features/dashboard/presentation/dashboard_screen.dart';
 
 void main() {
   testWidgets('App loads smoke test', (WidgetTester tester) async {
@@ -24,7 +24,7 @@ void main() {
       ),
     );
 
-    // Verify that the login screen or dashboard loads (e.g. looking for Kula Theivam text).
-    expect(find.text('Kula Theivam'), findsWidgets);
+    // Verify that the dashboard screen loads.
+    expect(find.byType(DashboardScreen), findsOneWidget);
   });
 }

@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kulatheivam/core/widgets/custom_delete_dialog.dart';
 import '../data/shiva_murtis_data.dart';
 import '../data/deity_master_data.dart';
+import '../data/shiva_associated_data.dart';
+import 'widgets/shiva_structured_registration_widget.dart';
 
 class AddNewDeitiesWizardContent extends ConsumerStatefulWidget {
   final Function(String, {Map<String, dynamic>? arguments}) onScreenSelected;
@@ -120,6 +122,18 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
   }
 
   static const String _storageKey = 'kovil_primary_deities_data_v1';
+  static const String _photosStorageKey = 'kovil_deity_photos_v1';
+  static const String _formsStorageKey = 'kovil_deity_forms_v1';
+  static const String _nayanmarsStorageKey = 'kovil_deity_nayanmars_v1';
+  static const String _siddharsStorageKey = 'kovil_deity_siddhars_v1';
+  static const String _familyStorageKey = 'kovil_deity_family_v1';
+
+  final List<PhotoReferenceRecord> _allPersistedPhotos = [];
+  final List<DeityFormRecord> _allPersistedForms = [];
+  final List<NayanmarRecord> _allPersistedNayanmars = [];
+  final List<SiddharRecord> _allPersistedSiddhars = [];
+  final List<DeityFamilyRelationshipRecord> _allPersistedFamily = [];
+
   final TextEditingController _tamilNameCtrl = TextEditingController();
   final TextEditingController _searchTableCtrl = TextEditingController();
   String? _editingDeityId;
@@ -227,6 +241,8 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
   Future<void> _loadSavedDeities() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // 1. Primary Deities
       final raw = prefs.getString(_storageKey);
       if (raw != null && raw.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(raw);
@@ -243,12 +259,52 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
           }
         });
       }
+
+      // 2. Separate Photos
+      final rawPhotos = prefs.getString(_photosStorageKey);
+      if (rawPhotos != null && rawPhotos.isNotEmpty) {
+        final List<dynamic> decPhotos = jsonDecode(rawPhotos);
+        _allPersistedPhotos.clear();
+        _allPersistedPhotos.addAll(decPhotos.map((p) => PhotoReferenceRecord.fromJson(p)));
+      }
+
+      // 3. Separate Forms
+      final rawForms = prefs.getString(_formsStorageKey);
+      if (rawForms != null && rawForms.isNotEmpty) {
+        final List<dynamic> decForms = jsonDecode(rawForms);
+        _allPersistedForms.clear();
+        _allPersistedForms.addAll(decForms.map((f) => DeityFormRecord.fromJson(f)));
+      }
+
+      // 4. Separate Nayanmars
+      final rawNayanmars = prefs.getString(_nayanmarsStorageKey);
+      if (rawNayanmars != null && rawNayanmars.isNotEmpty) {
+        final List<dynamic> decNayanmars = jsonDecode(rawNayanmars);
+        _allPersistedNayanmars.clear();
+        _allPersistedNayanmars.addAll(decNayanmars.map((n) => NayanmarRecord.fromJson(n)));
+      }
+
+      // 5. Separate Siddhars
+      final rawSiddhars = prefs.getString(_siddharsStorageKey);
+      if (rawSiddhars != null && rawSiddhars.isNotEmpty) {
+        final List<dynamic> decSiddhars = jsonDecode(rawSiddhars);
+        _allPersistedSiddhars.clear();
+        _allPersistedSiddhars.addAll(decSiddhars.map((s) => SiddharRecord.fromJson(s)));
+      }
+
+      // 6. Separate Family Relationships
+      final rawFamily = prefs.getString(_familyStorageKey);
+      if (rawFamily != null && rawFamily.isNotEmpty) {
+        final List<dynamic> decFamily = jsonDecode(rawFamily);
+        _allPersistedFamily.clear();
+        _allPersistedFamily.addAll(decFamily.map((fm) => DeityFamilyRelationshipRecord.fromJson(fm)));
+      }
     } catch (e) {
       debugPrint('Error loading saved deities: $e');
     }
   }
 
-  Future<void> _persistSavedDeities() async {
+  Future<void> _persistAllData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final toSave = _savedDeities.map((d) {
@@ -257,8 +313,84 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
         return copy;
       }).toList();
       await prefs.setString(_storageKey, jsonEncode(toSave));
+
+      await prefs.setString(
+        _photosStorageKey,
+        jsonEncode(_allPersistedPhotos.map((p) => p.toJson()).toList()),
+      );
+      await prefs.setString(
+        _formsStorageKey,
+        jsonEncode(_allPersistedForms.map((f) => f.toJson()).toList()),
+      );
+      await prefs.setString(
+        _nayanmarsStorageKey,
+        jsonEncode(_allPersistedNayanmars.map((n) => n.toJson()).toList()),
+      );
+      await prefs.setString(
+        _siddharsStorageKey,
+        jsonEncode(_allPersistedSiddhars.map((s) => s.toJson()).toList()),
+      );
+      await prefs.setString(
+        _familyStorageKey,
+        jsonEncode(_allPersistedFamily.map((fm) => fm.toJson()).toList()),
+      );
     } catch (e) {
-      debugPrint('Error persisting deities: $e');
+      debugPrint('Error persisting data: $e');
+    }
+  }
+
+  Future<void> _persistSavedDeities() async {
+    await _persistAllData();
+  }
+
+  Future<void> _saveStructuredPrimaryDeity(
+    Map<String, dynamic> deityRecord,
+    List<PhotoReferenceRecord> photos,
+    List<DeityFormRecord> forms,
+    List<NayanmarRecord> nayanmars,
+    List<SiddharRecord> siddhars,
+    List<DeityFamilyRelationshipRecord> family,
+  ) async {
+    setState(() => _isLoading = true);
+
+    final deityId = deityRecord['id']?.toString() ?? 'shiva';
+
+    // Update separate collections
+    _allPersistedPhotos.removeWhere((p) => p.deityId == deityId);
+    _allPersistedPhotos.addAll(photos);
+
+    _allPersistedForms.removeWhere((f) => f.primaryDeityId == deityId);
+    _allPersistedForms.addAll(forms);
+
+    _allPersistedNayanmars.removeWhere((n) => n.primaryDeityId == deityId);
+    _allPersistedNayanmars.addAll(nayanmars);
+
+    _allPersistedSiddhars.removeWhere((s) => s.primaryDeityId == deityId);
+    _allPersistedSiddhars.addAll(siddhars);
+
+    _allPersistedFamily.removeWhere((fm) => fm.primaryDeityId == deityId);
+    _allPersistedFamily.addAll(family);
+
+    // Update or insert primary deity
+    final idx = _savedDeities.indexWhere((d) => d['id']?.toString() == deityId);
+    if (idx != -1) {
+      _savedDeities[idx] = deityRecord;
+    } else {
+      _savedDeities.add(deityRecord);
+    }
+
+    await _persistAllData();
+
+    setState(() {
+      _isLoading = false;
+      _editingDeityId = null;
+    });
+
+    if (mounted) {
+      CustomDeleteDialog.showSuccess(
+        context,
+        message: '${deityRecord['tamilName']} முதன்மை தெய்வம் மற்றும் தொடர்புடைய தகவல்கள் வெற்றிகரமாக சேமிக்கப்பட்டன!',
+      );
     }
   }
 
@@ -320,6 +452,7 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
   void _onCategorySelected(String categoryTitle) {
     if (_selectedCategory != categoryTitle) {
       _selectedCategory = categoryTitle;
+      _editingDeityId = null;
       _clearManualAddForm();
     }
   }
@@ -341,6 +474,32 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
       _fastingsCtrl.text = deity['fastings'] ?? '';
       _notesCtrl.text = deity['notes'] ?? '';
       _mainPhotoBytes = deity['mainPhotoBytes'] as Uint8List?;
+
+      // Hydrate separate structured collections if editing
+      final deityId = _editingDeityId;
+      if (deityId != null) {
+        final photos = _allPersistedPhotos.where((p) => p.deityId == deityId).toList();
+        final forms = _allPersistedForms.where((f) => f.primaryDeityId == deityId).toList();
+        final nayanmars = _allPersistedNayanmars.where((n) => n.primaryDeityId == deityId).toList();
+        final siddhars = _allPersistedSiddhars.where((s) => s.primaryDeityId == deityId).toList();
+        final family = _allPersistedFamily.where((fm) => fm.primaryDeityId == deityId).toList();
+
+        if (photos.isNotEmpty && (deity['photoReferences'] == null || (deity['photoReferences'] as List).isEmpty)) {
+          deity['photoReferences'] = photos.map((p) => p.toJson()).toList();
+        }
+        if (forms.isNotEmpty && (deity['forms'] == null || (deity['forms'] as List).isEmpty)) {
+          deity['forms'] = forms.map((f) => f.toJson()).toList();
+        }
+        if (nayanmars.isNotEmpty && (deity['nayanmars'] == null || (deity['nayanmars'] as List).isEmpty)) {
+          deity['nayanmars'] = nayanmars.map((n) => n.toJson()).toList();
+        }
+        if (siddhars.isNotEmpty && (deity['siddhars'] == null || (deity['siddhars'] as List).isEmpty)) {
+          deity['siddhars'] = siddhars.map((s) => s.toJson()).toList();
+        }
+        if (family.isNotEmpty && (deity['familyMembers'] == null || (deity['familyMembers'] as List).isEmpty)) {
+          deity['familyMembers'] = family.map((fm) => fm.toJson()).toList();
+        }
+      }
 
       final type = (deity['gender'] ?? deity['deivamType'] ?? '').toString().toLowerCase();
       if (type == 'male' || type.contains('ஆண்')) {
@@ -368,12 +527,20 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
     final confirm = await CustomDeleteDialog.showConfirmation(context);
     if (confirm) {
       setState(() {
+        final deityId = deity['id']?.toString();
         _savedDeities.removeWhere((d) => d['id'] == deity['id']);
+        if (deityId != null) {
+          _allPersistedPhotos.removeWhere((p) => p.deityId == deityId);
+          _allPersistedForms.removeWhere((f) => f.primaryDeityId == deityId);
+          _allPersistedNayanmars.removeWhere((n) => n.primaryDeityId == deityId);
+          _allPersistedSiddhars.removeWhere((s) => s.primaryDeityId == deityId);
+          _allPersistedFamily.removeWhere((fm) => fm.primaryDeityId == deityId);
+        }
         if (_editingDeityId == deity['id']) {
           _clearManualAddForm();
         }
       });
-      await _persistSavedDeities();
+      await _persistAllData();
       if (mounted) {
         await CustomDeleteDialog.showDeleted(context);
       }
@@ -720,12 +887,43 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
         _buildSelectedCategoryBanner(selectedCategoryData, isDark),
         const SizedBox(height: 28),
 
-        // 1. Deities list under this Primary Deity
-        _buildDeitiesListUnderPrimaryDeity(deitiesUnderCurrentCategory, isDark, theme),
-        const SizedBox(height: 28),
+        if (_isShivaCategory) ...[
+          ShivaStructuredRegistrationWidget(
+            isDark: isDark,
+            theme: theme,
+            deitiesUnderCurrentCategory: deitiesUnderCurrentCategory,
+            editingDeity: _editingDeityId != null
+                ? _savedDeities.firstWhere(
+                    (d) => d['id']?.toString() == _editingDeityId,
+                    orElse: () => {},
+                  )
+                : null,
+            onSavePrimaryDeity: (deityRecord, photos, forms, nayanmars, siddhars, family) async {
+              await _saveStructuredPrimaryDeity(deityRecord, photos, forms, nayanmars, siddhars, family);
+            },
+            onCancelEdit: () {
+              setState(() {
+                _editingDeityId = null;
+                _clearManualAddForm();
+              });
+            },
+            onEditDeity: (deity) {
+              _loadDeityForEdit(deity);
+            },
+            onDeleteDeity: (deity) {
+              _deleteDeity(deity);
+            },
+          ),
+          const SizedBox(height: 28),
+          _buildDeitiesListUnderPrimaryDeity(deitiesUnderCurrentCategory, isDark, theme),
+        ] else ...[
+          // 1. Deities list under this Primary Deity
+          _buildDeitiesListUnderPrimaryDeity(deitiesUnderCurrentCategory, isDark, theme),
+          const SizedBox(height: 28),
 
-        // 2. Manual Deity Entry Form
-        _buildManualDeityAddCard(isDark, theme),
+          // 2. Manual Deity Entry Form
+          _buildManualDeityAddCard(isDark, theme),
+        ],
         const SizedBox(height: 32),
 
         // Navigation Row
@@ -975,7 +1173,48 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
                           ),
                         ),
                       ),
-                      DataCell(Text(deity['relationship']?.toString().isNotEmpty == true ? deity['relationship'] : '-')),
+                      DataCell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(deity['relationship']?.toString().isNotEmpty == true ? deity['relationship'] : '-'),
+                            if ((deity['forms'] as List?)?.isNotEmpty == true ||
+                                (deity['familyMembers'] as List?)?.isNotEmpty == true ||
+                                (deity['nayanmars'] as List?)?.isNotEmpty == true ||
+                                (deity['siddhars'] as List?)?.isNotEmpty == true) ...[
+                              const SizedBox(height: 2),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 2,
+                                children: [
+                                  if ((deity['forms'] as List?)?.isNotEmpty == true)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
+                                      child: Text('${(deity['forms'] as List).length} Forms', style: TextStyle(fontSize: 9, color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
+                                    ),
+                                  if ((deity['familyMembers'] as List?)?.isNotEmpty == true)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(4)),
+                                      child: Text('${(deity['familyMembers'] as List).length} Family', style: TextStyle(fontSize: 9, color: Colors.pink.shade800, fontWeight: FontWeight.bold)),
+                                    ),
+                                  if (((deity['nayanmars'] as List?)?.isNotEmpty == true) || ((deity['siddhars'] as List?)?.isNotEmpty == true))
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(4)),
+                                      child: Text(
+                                        '${((deity['nayanmars'] as List?)?.length ?? 0) + ((deity['siddhars'] as List?)?.length ?? 0)} Saints',
+                                        style: TextStyle(fontSize: 9, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                       DataCell(Text(deity['parentDeityId']?.toString().isNotEmpty == true ? deity['parentDeityId'] : (deity['parentDeity']?.toString().isNotEmpty == true ? deity['parentDeity'] : '-'))),
                       DataCell(
                         ConstrainedBox(
@@ -4389,7 +4628,48 @@ class _AddNewDeitiesWizardContentState extends ConsumerState<AddNewDeitiesWizard
                           ),
                         ),
                       ),
-                      DataCell(Text(deity['relationship']?.toString().isNotEmpty == true ? deity['relationship'] : '-')),
+                      DataCell(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(deity['relationship']?.toString().isNotEmpty == true ? deity['relationship'] : '-'),
+                            if ((deity['forms'] as List?)?.isNotEmpty == true ||
+                                (deity['familyMembers'] as List?)?.isNotEmpty == true ||
+                                (deity['nayanmars'] as List?)?.isNotEmpty == true ||
+                                (deity['siddhars'] as List?)?.isNotEmpty == true) ...[
+                              const SizedBox(height: 2),
+                              Wrap(
+                                spacing: 4,
+                                runSpacing: 2,
+                                children: [
+                                  if ((deity['forms'] as List?)?.isNotEmpty == true)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
+                                      child: Text('${(deity['forms'] as List).length} Forms', style: TextStyle(fontSize: 9, color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
+                                    ),
+                                  if ((deity['familyMembers'] as List?)?.isNotEmpty == true)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(color: Colors.pink.shade50, borderRadius: BorderRadius.circular(4)),
+                                      child: Text('${(deity['familyMembers'] as List).length} Family', style: TextStyle(fontSize: 9, color: Colors.pink.shade800, fontWeight: FontWeight.bold)),
+                                    ),
+                                  if (((deity['nayanmars'] as List?)?.isNotEmpty == true) || ((deity['siddhars'] as List?)?.isNotEmpty == true))
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(4)),
+                                      child: Text(
+                                        '${((deity['nayanmars'] as List?)?.length ?? 0) + ((deity['siddhars'] as List?)?.length ?? 0)} Saints',
+                                        style: TextStyle(fontSize: 9, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                       DataCell(Text(deity['parentDeityId']?.toString().isNotEmpty == true ? deity['parentDeityId'] : (deity['parentDeity']?.toString().isNotEmpty == true ? deity['parentDeity'] : '-'))),
                       DataCell(
                         ConstrainedBox(
